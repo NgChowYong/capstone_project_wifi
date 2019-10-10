@@ -55,11 +55,11 @@ add_message_files(
 )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
+# add_service_files(
+  # FILES
 #  Send_task.srv
 #  Service2.srv
-)
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
