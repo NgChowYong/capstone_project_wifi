@@ -10,10 +10,10 @@ project(ros_wifi)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
-  geometry_msgs
   message_generation
+  geometry_msgs
 )
-
+#  rospy_message_converter-master
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -50,16 +50,22 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
    FILES
+   CtrlData.msg
+   RouteNode.msg
+   Cost.msg
    WifiIO.msg
 #   Message2.msg
 )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-  # FILES
-#  Send_task.srv
-#  Service2.srv
-# )
+add_service_files(
+ FILES
+ Send_Task.srv
+ Ask_Data.srv
+ WifiNodeOcp.srv
+ WifiNodeCost.srv
+ WifiTaskConfirm.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -73,7 +79,6 @@ generate_messages(
    DEPENDENCIES
    std_msgs
    geometry_msgs
-   agv_controller
 )
 
 ################################################
