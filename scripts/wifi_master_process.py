@@ -143,6 +143,7 @@ class WIFI_MASTER():
 	        for i in range(len(self.host_list)):
             		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
+				break
         	self.host_list = tuple(self.host_list)
 
 		self.length_h_l = len(self.host_list)
