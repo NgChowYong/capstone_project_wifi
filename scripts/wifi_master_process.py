@@ -118,7 +118,8 @@ class WIFI_MASTER():
 			self.ID = rospy.get_param('IP_address')
 		else:
 			self.ID = '127.0.0.1'
-        if rospy.has_param('port'):
+
+	        if rospy.has_param('port'):
 			self.port = rospy.get_param('port')
 		else:
 			self.port     = 12345
@@ -139,10 +140,10 @@ class WIFI_MASTER():
 
 		# list of other car
 		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
-        for i in range(len(self.host_list)):
-            if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
-                self.host_list.remove((self.ID ,self.port ))
-        self.host_list = tuple(self.host_list)
+	        for i in range(len(self.host_list)):
+            		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
+                		self.host_list.remove((self.ID ,self.port ))
+        	self.host_list = tuple(self.host_list)
 
 		self.length_h_l = len(self.host_list)
 
