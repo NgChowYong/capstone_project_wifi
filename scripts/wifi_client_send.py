@@ -127,7 +127,7 @@ class Wifi():
 
 		send_no = self.sending_no
 		# read input data
-		head = req. header
+		head = req.header
 		self.d = req.info
 		self.d.sender = self.ID
 		# note that author decide by master only

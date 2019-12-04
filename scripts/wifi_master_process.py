@@ -66,12 +66,12 @@ def send_wifi(data):
 	try:
 		rospy.loginfo('tell wifi to send data')
 		send_tt = rospy.ServiceProxy('send_task', Send_Task)
-		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		sss = Send_Task()
-		sss.header = header
-		sss.info = data
-		rospy.loginfo(str(sss))
-		ret = send_tt(sss)
+		header_h = Header(stamp=rospy.Time.now(), frame_id='base')
+		#sss = Send_Task()
+		#sss.header = header_h
+		#sss.info = data
+		#rospy.loginfo(str(sss))
+		ret = send_tt(header_h,data)
 		rospy.loginfo('tell wifi to send done')
 		return ret
 	except rospy.ServiceException, e:
@@ -321,7 +321,7 @@ class WIFI_MASTER():
 ##############################################################################
 	def button_pressed(self):
 		ff = open("/home/testing_file.txt",'r')
-		self.button_press = int(ff.read())
+		self.button_press = ff.read()
 		ff.close()
 		if self.button_press == 0:
 			return False
