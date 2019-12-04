@@ -320,9 +320,15 @@ class WIFI_MASTER():
 
 ##############################################################################
 	def button_pressed(self):
+		ff = open("/home/testing_file.txt",'r')
+		self.button_press = int(ff.read())
+		ff.close()
 		if self.button_press == 0:
 			return False
 		else:
+			ff = open("/home/danlu008/Desktop/testing_file.txt",'w')
+			ff.write('0')
+			ff.close()
 			rospy.loginfo("button pressed")
 			self.button_press = 0
 			return True
