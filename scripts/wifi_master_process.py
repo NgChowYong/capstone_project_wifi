@@ -61,12 +61,17 @@ def Task_confirm(cs):  # call for service # input is cost
 		rospy.loginfo("Service call failed:")
 
 
-def send_wifi(self, data):
+def send_wifi(data):
 	rospy.wait_for_service('send_task')
 	try:
 		rospy.loginfo('tell wifi to send data')
-		ST = rospy.ServiceProxy('send_task',Send_Task)
-		ret = ST(data)
+		send_tt = rospy.ServiceProxy('send_task', Send_Task)
+		header = Header(stamp=rospy.Time.now(), frame_id='base')
+		sss = Send_Task()
+		sss.header = header
+		sss.info = data
+		rospy.loginfo(str(sss))
+		ret = send_tt(sss)
 		rospy.loginfo('tell wifi to send done')
 		return ret
 	except rospy.ServiceException, e:
@@ -83,8 +88,13 @@ class WIFI_MASTER():
 		rospy.init_node('wifi_master', anonymous=True)
 		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service 
 
+		###
+		starting = rospy.Service('starting_task',Send_Task,self.start_task)
+		###
+
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
 
+		rospy.loginfo("working : "+str(WORKING_STATION))
 		rospy.loginfo('initialize wifi master service ')
 		add_thread = threading.Thread(target = self.update_job)
   	  	add_thread.start()
@@ -92,6 +102,11 @@ class WIFI_MASTER():
 		# for closing thread and node		
 		rospy.spin()
 		self.shut = 1
+
+	def start_task(self,rep):
+		self.button_press = 1
+		rsp = Send_TaskResponse()
+		return rsp
 
 	def parameter_setup(self):
 		# for shuttingdown node and thread 
@@ -120,7 +135,7 @@ class WIFI_MASTER():
 		self.lock_1 = self.LOCK
 
 		# list of other car
-		self.host_list       = (("127.0.0.1", 12345),("127.0.0.1", 12346),("127.0.0.1", 12347))
+		self.host_list       = (("192.168.1.100", 12345),("192.168.1.101", 12345),("192.168.1.102", 12345))
 
 		self.length_h_l = len(self.host_list)
 
@@ -299,17 +314,17 @@ class WIFI_MASTER():
 		if self.button_press == 0:
 			return False
 		else:
+			rospy.loginfo("button pressed")
 			self.button_press = 0
 			return True
 
 	def announce_new_task(self):# sending task , task node , author
 		w = WifiIO()
-		w.signatures = "ALL"
+		w.signatures = ["ALL"]
 		w.TASK_ID = str(time.time())
 		w.node = self.current_node
 		w.author = self.ID
-		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		s = send_wifi(Send_Task(header,w)) # ask other cost
+		s = send_wifi(w) # ask other cost
 
 	def update_web(self,ctrldata):# function provided by Meng
 		return 1
@@ -318,7 +333,7 @@ class WIFI_MASTER():
 	def sent_all_node(self):
 		rospy.loginfo('send all')
 		w = WifiIO()
-		w.signatures = "ALL"
+		w.signatures = ["ALL"]
 		w.TASK_ID = self.current_task
 		w.node = self.current_node
 		header = Header(stamp=rospy.Time.now(), frame_id='base')

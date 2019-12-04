@@ -1,9 +1,9 @@
 <launch>
 
   <group ns="group3">
-    <param name="Working_Station" value="0" type="int"/>
-    <param name="IP_address" value="127.0.0.1" type="str"/>
-    <param name="port" value="12347" type="int"/>
+    <param name="Working_Station" value="1" type="int"/>
+    <param name="IP_address" value="192.168.1.100" type="str"/>
+    <param name="port" value="12345" type="int"/>
     <node name="node0_1" pkg="ros_wifi" type="service_ask_cost.py" />
     <node name="node0_2" pkg="ros_wifi" type="service_ask_node.py" />
     <node name="node0_3" pkg="ros_wifi" type="service_ask_data.py"/>

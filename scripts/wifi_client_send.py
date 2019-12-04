@@ -27,39 +27,42 @@ class Wifi():
 			self.ID = rospy.get_param('IP_address')
 		else:
 			self.ID = '127.0.0.1'
-		
+
 		self.hop_count= 5
-        	
+
 		# host_list = ID , port number
 		#self.host_list(('127.0.0.1',12345),('127.0.0.1',12346))
 		# current use 1 case first
-		self.host_list       = (("127.0.0.1", 12345),("127.0.0.1", 12346),("127.0.0.1", 12347))
+		self.host_list       = (("192.168.1.100", 12345),("192.168.1.101", 12345),("192.168.1.102", 12345))
 		# data_init
 		self.d = DATA()
 		self.parameter()
 
 		# init node and provide service
 		rospy.init_node('wifi_client_send')
-		self.ser = rospy.Service('send_task', Send_Task, self.handle_wifi_send)# could need to add another class reference to direct the pointer to the class 
- 
+		self.ser = rospy.Service('send_task', Send_Task, self.handle_wifi_send)  # could need to add another class reference to direct the pointer to the class 
+
 		# server_addr = (host, port)
 		server_addr = []
 		for i in range(len(self.host_list)):
 			server_addr.append(self.host_list[i])
-		
+		s_no = 0
 		# start to connect to multiple host
 		self.sel = selectors.DefaultSelector()
 		for i in range(len(server_addr)):
-		    connid = i + 1
-		    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		    sock.setblocking(False)
-		    sock.connect_ex(server_addr[i])
-		    events = selectors.EVENT_READ | selectors.EVENT_WRITE
-		    data = (connid,[self.d])
-		    self.sel.register(sock, events, data=data)
+			connid = i + 1
+ 			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			sock.setblocking(False)
+			if sock.connect_ex(server_addr[i]) == 0: # 0 for success
+				s_no = s_no + 1
+			events = selectors.EVENT_READ | selectors.EVENT_WRITE
+			data = (connid,[self.d])
+			self.sel.register(sock, events, data=data)
+		self.sending_no = s_no
+		rospy.loginfo('we connec robot no : '+str(self.sending_no))
 		rospy.loginfo('connection done wait for service call : ')
 		rospy.spin()
-	    
+
 	def parameter(self):
 		self.TASK = 'W'
 		self.OK   = 'O'
@@ -79,11 +82,11 @@ class Wifi():
 
 	def accept_wrapper(self,sock): #its from listening socket and accept connection
 		conn, addr = sock.accept()  # Should be ready to read
-		rospy.loginfo('accepted connection from', addr)
+		rospy.loginfo('accepted connection from : '+str( addr))
 		conn.setblocking(False)
 		data = [addr,self.msg]
 		events = selectors.EVENT_READ | selectors.EVENT_WRITE
-		self.sel.register(conn, events, data=data)        
+		self.sel.register(conn, events, data=data)
 
 	def service_connection(self,key, mask): # its client socket.
 		sock = key.fileobj
@@ -94,23 +97,24 @@ class Wifi():
 			try:
 				recv_data = sock.recv(1024)  # Should be ready to read
 				if recv_data:
-					rospy.loginfo('received from connection', data[0])
+					rospy.loginfo('received from connection'+str( data[0]))
 			except:
 				rospy.loginfo('should not receive any data here !!!!')
 
-		if mask & selectors.EVENT_WRITE:		
+		if mask & selectors.EVENT_WRITE:
 			if data[0] in self.d.signatures:
 				rospy.loginfo('start sending wifi ')
 				# rospy.loginfo self.d
 				self.wifi_send(sock,self.d)
 				# rospy.loginfo self.d
-				rospy.loginfo('sending to connection', data[0])
+				rospy.loginfo('sending to connection'+str(data[0]))
 				return 1
 		return 0
 
 	def handle_wifi_send(self,req): # input of service is  header and wifiio output is error code and header
+
 		send_no = self.sending_no
-		# read input data 
+		# read input data
 		head = req. header
 		self.d = req.info
 		self.d.sender = self.ID
@@ -118,23 +122,29 @@ class Wifi():
 
 		if req.info.purpose == self.NODE_REPLY: # routenode details is renewed in master node 
 			self.d.purpose = 'A'
+			send_no = 1
 			self.d.signatures = req.info.author # send back to author
 		elif req.info.purpose == self.COST:
+			send_no = 1
 			self.d.purpose = 'C'
-			if req.info.signatures == "ALL": # all will send to every but else will send to original signatures ppl
+			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
 				self.d.signatures = []
-				for i in range(len(self.host_list)):
+				# for i in range(len(self.host_list)):
+				for i in range(send_no):
 					self.d.signatures.append(self.host_list[i])
 
 		elif req.info.purpose == self.NODE:
+			send_no = 1
 			pass
 		elif req.info.purpose == self.OK:
+			send_no = 1
 			pass
 		elif req.info.purpose == self.TASK or  req.info.purpose == self.WEB :
-			send_no = len(self.host_list)
+			#send_no = len(self.host_list)
+			send_no = send_no
 
-		rospy.loginfo('data storing done with purpose',req.info.purpose)	
-		
+		rospy.loginfo('data storing done with purpose'+str(req.info.purpose))
+
 		# currently msg sending is one to one only not one to many for every message, except for task 
 		flag = 0
 		while not rospy.is_shutdown():
@@ -162,7 +172,7 @@ class Wifi():
 				rospy.loginfo('error')
 				flag = 0
 				return resp
-       
+
 class DATA():
 	def __inti__(self):
 		# data content in WifiIO

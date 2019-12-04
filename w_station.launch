@@ -1,17 +1,17 @@
 <launch>
   <group ns="group1">
     <param name="Working_Station" value="1" type="int"/>
-    <param name="IP_address" value="127.0.0.1" type="str"/>
+    <param name="IP_address" value="10.0.2.255" type="str"/>
     <param name="port" value="12345" type="int"/>
-    <node name="node0_1" pkg="ros_wifi" type="service_ask_cost.py" />
-    <node name="node0_2" pkg="ros_wifi" type="service_ask_node.py" />
-    <node name="node0_3" pkg="ros_wifi" type="service_ask_data.py" />
-    <node name="node0_4" pkg="ros_wifi" type="service_wifi_confirm.py" />
-    <node name="node1_1" pkg="ros_wifi" type="wifi_client_send.py" output="screen"/>
-    <node name="node1_2" pkg="ros_wifi" type="wifi_master_process.py" output="screen"/>
-    <node name="node1_3" pkg="ros_wifi" type="wifi_server_receive.py" output="screen"/>
+    <node name="node_ask_cost" pkg="ros_wifi" type="service_ask_cost.py" />
+    <node name="node_ask_node" pkg="ros_wifi" type="service_ask_node.py" />
+    <node name="node_ask_data" pkg="ros_wifi" type="service_ask_data.py" />
+    <node name="node_wifi_conf" pkg="ros_wifi" type="service_wifi_confirm.py" />
+    <node name="node_client" pkg="ros_wifi" type="wifi_client_send.py" output="screen"/>
+    <node name="node_master" pkg="ros_wifi" type="wifi_master_process.py" output="screen"/>
+    <node name="node_server" pkg="ros_wifi" type="wifi_server_receive.py" output="screen"/>
   </group>
   
 </launch>
-<!--
+<!--10.0.2.255 cpu, 192.168.1.101 ng, 192.168.1.102 danlu
 -->

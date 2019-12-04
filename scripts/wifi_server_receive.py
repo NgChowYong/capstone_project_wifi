@@ -57,7 +57,6 @@ class Wifi():
 			self.port = rospy.get_param('port')
 		else:
 			self.port     = 12345
-		
 		self.hop_count= 5
 
 		# data_init
@@ -67,6 +66,8 @@ class Wifi():
 		# initial node
 		rospy.init_node('wifi_server_receive', anonymous=True)
 		self.pub = rospy.Publisher('robot_wifi_io', WifiIO , queue_size=30) # node, msg, size
+		rospy.loginfo("ID:"+str(self.ID)+" port:"+str(self.port))
+
 		# wifi connection
 		self.lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.lsock.bind((self.ID, self.port))
