@@ -143,6 +143,7 @@ class WIFI_MASTER():
 	        for i in range(len(self.host_list)):
             		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
+				break
         	self.host_list = tuple(self.host_list)
 
 		self.length_h_l = len(self.host_list)
@@ -319,9 +320,15 @@ class WIFI_MASTER():
 
 ##############################################################################
 	def button_pressed(self):
+		ff = open("/home/testing_file.txt",'r')
+		self.button_press = int(ff.read())
+		ff.close()
 		if self.button_press == 0:
 			return False
 		else:
+			ff = open("/home/danlu008/Desktop/testing_file.txt",'w')
+			ff.write('0')
+			ff.close()
 			rospy.loginfo("button pressed")
 			self.button_press = 0
 			return True
