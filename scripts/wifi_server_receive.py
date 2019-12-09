@@ -122,7 +122,7 @@ class Wifi():
 			recv_data = sock.recv(1024)  # Should be ready to read
 			if recv_data:
 				rospy.loginfo('recv from : '+str(data[0]))
-				flag,data_ = self.receive_data(recv_data.decode('utf-8')) #
+				flag,data_ = self.receive_data(recv_data) #
 				self.previous_sender = data_.sender
 
 		if mask & selectors.EVENT_WRITE: #normally write
@@ -134,9 +134,7 @@ class Wifi():
 
 	def receive_data(self,data_rc):
 		rospy.loginfo('start receive data')
-		d = json.loads(data_rc)
-		#rospy.loginfo('data cond: '+ str(d))
-		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', d)
+		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', data_rc.decode('utf-8'))
 		flag = 0
 
 		if self.d.purpose == self.TASK: # reply to working station
