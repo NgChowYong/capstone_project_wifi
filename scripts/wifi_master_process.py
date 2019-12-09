@@ -66,12 +66,12 @@ def send_wifi(data):
 	try:
 		rospy.loginfo('tell wifi to send data')
 		send_tt = rospy.ServiceProxy('send_task', Send_Task)
-		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		sss = Send_Task()
-		sss.header = header
-		sss.info = data
-		rospy.loginfo(str(sss))
-		ret = send_tt(sss)
+		header_h = Header(stamp=rospy.Time.now(), frame_id='base')
+		#sss = Send_Task()
+		#sss.header = header_h
+		#sss.info = data
+		#rospy.loginfo(str(sss))
+		ret = send_tt(header_h,data)
 		rospy.loginfo('tell wifi to send done')
 		return ret
 	except rospy.ServiceException, e:
@@ -119,6 +119,10 @@ class WIFI_MASTER():
 		else:
 			self.ID = '127.0.0.1'
 
+	        if rospy.has_param('port'):
+			self.port = rospy.get_param('port')
+		else:
+			self.port     = 12345
 
 		# some parameter
 		self.COST = 'C'
@@ -135,7 +139,12 @@ class WIFI_MASTER():
 		self.lock_1 = self.LOCK
 
 		# list of other car
-		self.host_list       = (("192.168.1.100", 12345),("192.168.1.101", 12345),("192.168.1.102", 12345))
+		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
+	        for i in range(len(self.host_list)):
+            		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
+                		self.host_list.remove((self.ID ,self.port ))
+				break
+        	self.host_list = tuple(self.host_list)
 
 		self.length_h_l = len(self.host_list)
 
@@ -311,9 +320,15 @@ class WIFI_MASTER():
 
 ##############################################################################
 	def button_pressed(self):
+		ff = open("/home/testing_file.txt",'r')
+		self.button_press = ff.read()
+		ff.close()
 		if self.button_press == 0:
 			return False
 		else:
+			ff = open("/home/danlu008/Desktop/testing_file.txt",'w')
+			ff.write('0')
+			ff.close()
 			rospy.loginfo("button pressed")
 			self.button_press = 0
 			return True

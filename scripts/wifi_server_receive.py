@@ -59,6 +59,16 @@ class Wifi():
 			self.port     = 12345
 		self.hop_count= 5
 
+	        # list of other car
+		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
+	        for i in range(len(self.host_list)):
+        		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
+                		self.host_list.remove((self.ID ,self.port ))
+				break
+        	self.host_list = tuple(self.host_list)
+
+		self.length_h_l = len(self.host_list)
+
 		# data_init
 		self.d = DATA()
 		self.parameter()

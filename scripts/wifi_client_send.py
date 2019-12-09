@@ -28,12 +28,23 @@ class Wifi():
 		else:
 			self.ID = '127.0.0.1'
 
+		if rospy.has_param('port'):
+			self.port = rospy.get_param('port')
+		else:
+			self.port     = 12345
+
 		self.hop_count= 5
 
 		# host_list = ID , port number
 		#self.host_list(('127.0.0.1',12345),('127.0.0.1',12346))
 		# current use 1 case first
-		self.host_list       = (("192.168.1.100", 12345),("192.168.1.101", 12345),("192.168.1.102", 12345))
+		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
+	        for i in range(len(self.host_list)):
+        		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
+                		self.host_list.remove((self.ID ,self.port ))
+				break
+        	self.host_list = tuple(self.host_list)
+
 		# data_init
 		self.d = DATA()
 		self.parameter()
@@ -53,12 +64,13 @@ class Wifi():
 			connid = i + 1
  			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			sock.setblocking(False)
-			if sock.connect_ex(server_addr[i]) == 0: # 0 for success
-				s_no = s_no + 1
+			#if sock.connect_ex(server_addr[i]) == 0: # 0 for success
+			s_no = s_no + 1 # not everytime will connect
 			events = selectors.EVENT_READ | selectors.EVENT_WRITE
 			data = (connid,[self.d])
 			self.sel.register(sock, events, data=data)
-		self.sending_no = s_no
+		#self.sending_no = s_no
+	        self.sending_no = len(self.host_list)
 		rospy.loginfo('we connec robot no : '+str(self.sending_no))
 		rospy.loginfo('connection done wait for service call : ')
 		rospy.spin()
@@ -115,7 +127,7 @@ class Wifi():
 
 		send_no = self.sending_no
 		# read input data
-		head = req. header
+		head = req.header
 		self.d = req.info
 		self.d.sender = self.ID
 		# note that author decide by master only
