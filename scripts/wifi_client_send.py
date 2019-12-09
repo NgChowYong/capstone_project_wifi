@@ -44,7 +44,6 @@ class Wifi():
                 		self.host_list.remove((self.ID ,self.port ))
 				break
         	self.host_list = tuple(self.host_list)
-
 		# data_init
 		self.d = DATA()
 		self.parameter()
@@ -52,7 +51,7 @@ class Wifi():
 		# init node and provide service
 		rospy.init_node('wifi_client_send')
 		self.ser = rospy.Service('send_task', Send_Task, self.handle_wifi_send)  # could need to add another class reference to direct the pointer to the class 
-
+		rospy.loginfo("current host list : "+str(self.host_list))
 		# server_addr = (host, port)
 		server_addr = []
 		for i in range(len(self.host_list)):
@@ -64,7 +63,7 @@ class Wifi():
 			connid = i + 1
  			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			sock.setblocking(False)
-			#if sock.connect_ex(server_addr[i]) == 0: # 0 for success
+			sock.connect_ex(server_addr[i]) # == 0 : # 0 for success
 			s_no = s_no + 1 # not everytime will connect
 			events = selectors.EVENT_READ | selectors.EVENT_WRITE
 			data = (connid,[self.d])
@@ -72,6 +71,7 @@ class Wifi():
 		#self.sending_no = s_no
 	        self.sending_no = len(self.host_list)
 		rospy.loginfo('we connec robot no : '+str(self.sending_no))
+		rospy.loginfo('we actual connec robot no : '+str(s_no))
 		rospy.loginfo('connection done wait for service call : ')
 		rospy.spin()
 
@@ -103,7 +103,6 @@ class Wifi():
 	def service_connection(self,key, mask): # its client socket.
 		sock = key.fileobj
 		data = key.data
-
 		if mask & selectors.EVENT_READ:
 			#pass
 			try:
@@ -111,8 +110,8 @@ class Wifi():
 				if recv_data:
 					rospy.loginfo('received from connection'+str( data[0]))
 			except:
-				rospy.loginfo('should not receive any data here !!!!')
-
+				#rospy.loginfo('should not receive any data here !!!!')
+				pass
 		if mask & selectors.EVENT_WRITE:
 			if data[0] in self.d.signatures:
 				rospy.loginfo('start sending wifi ')
@@ -154,6 +153,11 @@ class Wifi():
 		elif req.info.purpose == self.TASK or  req.info.purpose == self.WEB :
 			#send_no = len(self.host_list)
 			send_no = send_no
+			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
+				self.d.signatures = []
+				# for i in range(len(self.host_list)):
+				for i in range(send_no):
+					self.d.signatures.append(self.host_list[i])
 
 		rospy.loginfo('data storing done with purpose'+str(req.info.purpose))
 

@@ -98,8 +98,8 @@ class WIFI_MASTER():
 
 		add_thread = threading.Thread(target = self.update_job)
   	  	add_thread.start()
-		
-		# for closing thread and node		
+
+		# for closing thread and node
 		rospy.spin()
 		self.shut = 1
 
@@ -109,9 +109,9 @@ class WIFI_MASTER():
 		return rsp
 
 	def parameter_setup(self):
-		# for shuttingdown node and thread 
-		self.shut = 0		
-		
+		# for shuttingdown node and thread
+		self.shut = 0
+
 		# database
 		self.database = []
 		if rospy.has_param('IP_address'):
@@ -320,7 +320,7 @@ class WIFI_MASTER():
 			return False
 		else:
 			self.cc = counter
-			
+
 		if self.button_press == self.cc:
 			return False
 		else:
@@ -424,9 +424,7 @@ class NODE_DATA():
 				self.data[i][1] = data_.node
 				break
 
-
-if __name__ == '__main__':
-	# run web app
+def apprun():
 	app=Flask(__name__)
 
 	@app.route('/',methods=['GET'])
@@ -447,8 +445,13 @@ if __name__ == '__main__':
 		counter = 0
 		return render_template('index.html',call=counter)
 
-	app.run(debug=True,port=5000)
+	app.run(host='0.0.0.0',debug=False,port=5000)
 
+
+if __name__ == '__main__':
+	# run web app
+	add_thread = threading.Thread(target = apprun)
+  	add_thread.start()
     #try:
     	w = WIFI_MASTER()
 	#  w.talker()
