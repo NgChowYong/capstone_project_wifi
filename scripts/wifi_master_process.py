@@ -206,14 +206,18 @@ class WIFI_MASTER():
 			rospy.loginfo('MASTER: recv in cost')
 			if data.sender_state == self.IDLE: # sender is normal ppl
 				rospy.loginfo('MASTER:sender is idle')
-				if len(self.database) > 0 or self.current_task.task_id != None : # i got some task working
+				if len(self.database) > 0 or self.current_task != None : # i got some task working
 					rospy.loginfo('MASTER: IM GOT SOME TASK')
 					flag_task = 0
 					if len(self.database)>0:
-						if data.TASK_ID == self.database[i].task_id :
-							flag_task = 1
-					elif self.current_task.task_id != None:
+						for i in range(len(self.database)):
+							if data.TASK_ID == self.database[i].task_id :
+								flag_task = 1
+								temp_flag = 1
+								break
+					elif self.current_task.task_id == data.TASK_ID:
 						flag_task = 1
+						temp_flag = 2
 					if flag_task == 1: # task is within my task
 						rospy.loginfo('MASTER: task is in my list')
 						if self.current_state == self.WORKING:
@@ -238,7 +242,10 @@ class WIFI_MASTER():
 							else: # not me receive the last
 								# then just continue to pass with compare to my cost
 								rospy.loginfo('MASTER: Continue pass cost')
-								self.reply_compare(data,self.database)
+								if temp_flag == 1:
+									self.reply_compare(data,self.database[i])
+								if temp_flag == 2:
+									self.reply_compare(data,self.current_task)
 					else: # task is not in my task
 						rospy.loginfo('MASTER:I didnt recv this task')
 						self.reply_normal(data)
@@ -389,26 +396,24 @@ class WIFI_MASTER():
 		w.signatures = data.signatures
 		w.cost  = data.cost
 		w.sender_state = state
-		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		ww = Send_Task()
-		ww.header = header
-		ww.info = w
-		s = send_wifi(ww) # ask other cost
+		# header = Header(stamp=rospy.Time.now(), frame_id='base')
+		w.purpose = self.COST
+		# w.sender_state = self.current_state
+		s = send_wifi(w) # ask other cost
 
 	def reply_compare(self,data,task): # input is wifiIO and database
 		rospy.loginfo('MASTER:reply compare')
 		w = data
-		for task_ in task:
-			if task_.task_id == data.TASK_ID:
-				if data.cost.cost >  task_.self_cost: # this means my cost is lower
-					w.cost.cost_owner = self.ID
-					w.cost			  = task_.self_cost
+		#for task_ in task:
+		#if task_.task_id == data.TASK_ID:
+		if data.cost.cost >  task.self_cost: # this means my cost is lower
+			rospy.loginfo('MASTER:IM better')
+			w.cost.cost	  = task.self_cost
+			w.cost.cost_owner = self.ID
+		w.purpose = self.COST
 		w.sender_state = self.IDLE
-		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		ww = Send_Task()
-		ww.header = header
-		ww.info = w
-		s = send_wifi(ww) # ask other cost
+		#header = Header(stamp=rospy.Time.now(), frame_id='base')
+		s = send_wifi(w) # ask other cost
 
 	def start_ask_cost(self):
 		rospy.loginfo('MASTER:start ask cost')
@@ -419,7 +424,7 @@ class WIFI_MASTER():
 		self.current_task.self_cost = ret.cost
 		# NOW ask others their cost
 		# need to send task need to use WIFI IO now
-		header = Header(stamp=rospy.Time.now(), frame_id='base')
+		#header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w = self.wifiio_cost_update(self.current_task)
 		w.sender_state = self.current_state
 		w.purpose = self.COST

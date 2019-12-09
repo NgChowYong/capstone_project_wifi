@@ -142,11 +142,16 @@ class Wifi():
 	def handle_wifi_send(self,req): # input of service is  header and wifiio output is error code and header
 
 		send_no = self.sending_no
+[INFO] [1575931565.010762]: sending to connection('192.168.1.101', 12345)
 		# read input data
 		head = req.header
 		self.d = req.info
 		self.d.sender = self.ID
 		# note that author decide by master only
+
+		# for clearing string tuple problem
+		for i in range(len(self.d.signatures)):
+                        self.d.signatures[i] =  eval(self.d.signatures[i])
 
 		if req.info.purpose == self.NODE_REPLY: # routenode details is renewed in master node 
 			self.d.purpose = 'A'
