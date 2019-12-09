@@ -175,10 +175,6 @@ class Wifi():
 						self.accept_wrapper(key.fileobj)
 				    	else:
 						fff = self.service_connection(key,mask)
-						#if fff == 0 :
-						#	acc += 1
-						#if acc % 5000 == 0:
-						#	rospy.loginfo('not connected for n times : '+str(acc))
 						flag += fff
 				# for service return
 				if flag == send_no:
