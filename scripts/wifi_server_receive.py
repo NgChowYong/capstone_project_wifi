@@ -20,7 +20,7 @@ else:
 
 # WORKING_STATION = True # True or False
 
-def ros_serv_(p):  # call for service # input is string 
+def ros_serv_(p):  # call for service # input is string
 	rospy.wait_for_service('robot_wifi_askdata_inner') # wait until service available # service name
 	try:
 		rospy.loginfo('ask central for data')
@@ -114,14 +114,14 @@ class Wifi():
 		events = selectors.EVENT_READ | selectors.EVENT_WRITE
 		self.sel.register(conn, events, data=data)
 
-	def service_connection(self,key, mask): 
+	def service_connection(self,key, mask):
 		sock = key.fileobj
 		data = key.data
 		flag = 0
 		if mask & selectors.EVENT_READ:
-			recv_data = sock.recv(1024)  # Should be ready to read        
+			recv_data = sock.recv(1024)  # Should be ready to read
 			if recv_data:
-				rospy.loginfo('recv from : '+str(key.fileobj))
+				rospy.loginfo('recv from : '+str(data[0]))
 				flag,data_ = self.receive_data(recv_data.decode('utf-8')) #
 				self.previous_sender = data_.sender
 
@@ -130,11 +130,12 @@ class Wifi():
 				if self.previous_sender == data and self.previous_sender!= self.ID: 
 					rospy.loginfo('rdy to reply data')
 					self.reply_data(data_,flag) # maybe can use sock as signature to return
-					flag = 0       
+					flag = 0
 
 	def receive_data(self,data_rc):
 		rospy.loginfo('start receive data')
 		d = json.loads(data_rc)
+		rospy.loginfo('data cond: '+ str(d))
 		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', d)
 		flag = 0
 
@@ -150,12 +151,12 @@ class Wifi():
 			flag = 0
 		elif self.d.purpose == self.OK: # reply node ok
 			flag = 0
-		
+
 		if self.d.purpose == self.WEB and WORKING_STATION == False : # recv WEB 
 	        	rospy.loginfo('done receive data ')
 	        	return flag,self.d
-		
-		# means i truely receive this message so i sign 
+
+		# means i truely receive this message so i sign
 		if self.ID in self.d.signatures:
 			self.d.signatures.remove(self.ID)
 
@@ -188,20 +189,19 @@ class Wifi():
 			b.np_ocp.node = -1
 			b.np_ocp.pos.x = -1
 			b.np_ocp.pos.y = -1
-			b.np_ocp.pos.z = -1	
+			b.np_ocp.pos.z = -1
 		else:
-			b = ros_serv_(d.purpose) 
+			b = ros_serv_(d.purpose)
 		rospy.loginfo('reply for node service')
 		d.purpose = 'A'
 		d.node = b.nd_ocp
 		send_wifi(d)
 		rospy.loginfo('end reply node req')
 
-	def rossend(self,data): 
+	def rossend(self,data):
 		rospy.loginfo("ros send data")
 		self.pub.publish(data)
 
-        
 class DATA():
 	def __inti__(self):
 		# data content in WifiIO
