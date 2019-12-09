@@ -177,7 +177,7 @@ class Wifi():
 					self.d.signatures.append(self.host_list[i])
 		self.server_addr = list(self.d.signatures)
 		# currently msg sending is one to one only not one to many for every message, except for task 
-		rospy.loginfo('data storing done with purpose : '+str(req.info.purpose))
+		rospy.loginfo('client recv want to send data with purpose : '+str(req.info.purpose))
 		rospy.loginfo('need to send to : '+str(self.d.signatures))
 		flag = 0
 		while not rospy.is_shutdown():
@@ -205,8 +205,7 @@ class Wifi():
 							data = key.data
 							self.sel.register(sock, events, data=data)
 						elif fff == 1:
-
-							rospy.loginfo(str(self.server_addr))
+							# rospy.loginfo(str(self.server_addr))
 							self.server_addr.remove(key.data)
 						flag += fff
 				# for service return
@@ -215,7 +214,7 @@ class Wifi():
 				    resp = Send_TaskResponse()
 				    resp.header = Header(stamp=rospy.Time.now(), frame_id='base')
 				    resp.error_code = '1'  # return int16 success # success~~
-				    rospy.loginfo('done and closing')
+				    rospy.loginfo('client done and closing')
 				    flag = 0
 				    return resp
 			#except :

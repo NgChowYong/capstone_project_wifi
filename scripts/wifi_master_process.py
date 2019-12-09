@@ -25,7 +25,7 @@ counter = 0
 # WORKING_STATION = True # True or False
 
 
-def ros_serv_(p):  # call for service # input is string 
+def ros_serv_(p):  # call for service # input is string
 	rospy.wait_for_service('robot_wifi_askdata_inner') # wait until service available # service name
 	try:
 		# rospy.loginfo('ask central for data')
@@ -39,41 +39,41 @@ def ros_serv_(p):  # call for service # input is string
 		rospy.loginfo("Service call failed:")
 
 
-def ask_cost(rn):  # call for service # input is string 
+def ask_cost(rn):  # call for service # input is string
 	rospy.wait_for_service('robot_wifi_nodecost_inner') # wait until service available
 	try:
-		rospy.loginfo('ask central for cost')
+		rospy.loginfo('MASTER:ask central for cost')
 		ask_cost = rospy.ServiceProxy('robot_wifi_nodecost_inner', WifiNodeCost) 
 		s = ask_cost(rn)
-		rospy.loginfo('ask central for cost done')
+		rospy.loginfo('MASTER:ask central for cost done')
 		return s
 	except rospy.ServiceException, e:
-		rospy.loginfo("Service call failed:")
+		rospy.loginfo("MASTER:Service call failed:")
 
 
-def Task_confirm(cs):  # call for service # input is cost 
+def Task_confirm(cs):  # call for service # input is cost
 	rospy.wait_for_service('robot_wifi_taskconfirm_inner') # wait until service available
 	try:
-		rospy.loginfo('ask central for wifi confirm')
+		rospy.loginfo('MASTER:ask central for wifi confirm')
 		task_c = rospy.ServiceProxy('robot_wifi_taskconfirm_inner', WifiTaskConfirm) 
 		s = task_c(cs)
-		rospy.loginfo('ask central for wifi confirm done')
+		rospy.loginfo('MASTER:ask central for wifi confirm done')
 		return s
 	except rospy.ServiceException, e:
-		rospy.loginfo("Service call failed:")
+		rospy.loginfo("MASTER:Service call failed:")
 
 
 def send_wifi(data):
 	rospy.wait_for_service('send_task')
 	try:
-		rospy.loginfo('tell wifi to send data')
+		rospy.loginfo('MASTER:tell wifi to send data')
 		send_tt = rospy.ServiceProxy('send_task', Send_Task)
 		header_h = Header(stamp=rospy.Time.now(), frame_id='base')
 		ret = send_tt(header_h,data)
-		rospy.loginfo('tell wifi to send done')
+		rospy.loginfo('MASTER:tell wifi to send done')
 		return ret
 	except rospy.ServiceException, e:
-		rospy.loginfo("Service call failed:")
+		rospy.loginfo("MASTER:Service call failed:")
 
 class WIFI_MASTER():
 	def __init__(self):
@@ -89,8 +89,8 @@ class WIFI_MASTER():
 		###
 
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
-		rospy.loginfo("working : "+str(WORKING_STATION))
-		rospy.loginfo('initialize wifi master service ')
+		rospy.loginfo("MASTER:working : "+str(WORKING_STATION))
+		rospy.loginfo('MASTER:initialize wifi master service ')
 
 		add_thread = threading.Thread(target = self.update_job)
   	  	add_thread.start()
@@ -108,8 +108,7 @@ class WIFI_MASTER():
 		# for shuttingdown node and thread
 		self.shut = 0
 
-		# database
-		self.database = []
+		# get IP add and port
 		if rospy.has_param('IP_address'):
 			self.ID = rospy.get_param('IP_address')
 		else:
@@ -129,10 +128,16 @@ class WIFI_MASTER():
 		self.ERROR = 'O'
 		self.current_task = 0 # just for reminding all task executing is under current task
 		self.WEB  = 'B'
+		self.IDLE = "IDLE"
+		self.COSTING = "COST_ING"
+		self.COSTDONE = "COST_DONE"
+		self.WORKING = "WORKING"
+		self.HOMING = "HOMING"
+		self.TEACHING = "TEACHING"
 
 		# locking for update job and subs
 		self.LOCK   = 1
-		self.UNLOCK = 0		
+		self.UNLOCK = 0
 		self.lock_1 = self.LOCK
 
 		# list of other car
@@ -147,21 +152,25 @@ class WIFI_MASTER():
 
 		# some state from vehicle
 		self.current_node = RouteNode()
-		self.current_state = "IDLE" # got IDLE , COST_ING , COST_DONE , WORKING
-		self.car_state = "IDLE" # got IDLE , HOMING , TEACHING , WORKING
+		self.current_state = self.IDLE # got IDLE , COST_ING , COST_DONE , WORKING
+		self.car_state = self.IDLE # got IDLE , HOMING , TEACHING , WORKING
 		self.node_data = NODE_DATA(self.host_list)
+		self.current_task = None
+		self.task_tag = 0
+		# database
+		self.database = []
 
 		# button press
 		self.button_press = 0
 
 		if WORKING_STATION == True:
-			self.WORKING_TAG = 1 
-			
+			self.WORKING_TAG = 1
+
 	def reply_service(self,req): # provide service reply
 		# error code 0 for no error ; P for still processing
-		rospy.loginfo('receive: ',req)
+		rospy.loginfo('receive: '+str(req))
 		rsp = WifiNodeOcpResponse()
-		if current_state == "WORKING":
+		if current_state == self.WORKING:
 			if self.node_data.check_hit(self.current_node):
 				rsp.is_ocp = 1
 				rsp.error_code = '0'
@@ -170,72 +179,94 @@ class WIFI_MASTER():
 				rsp.is_ocp = 0
 				rsp.error_code = '0'
 				return rsp
-		else:		
+		else:
 			rsp.is_ocp = 0
 			rsp.error_code = 'P'
-			return 
+			return rsp
 
 	def subs(self,data): # read data from wifi # data is WifiIO
 		# read new task
-		rospy.loginfo('recv data from wifi with purpose : ',data.purpose)
+		rospy.loginfo('MASTER:recv data in master')
+		#rospy.loginfo(str(data))
+		rospy.loginfo('MASTER:recv data from wifi with purpose : '+str(data.purpose))
 		if data.purpose == self.TASK:
 			check_flag = 0
 			if not WORKING_STATION: # working station not need to recv and store TASK
 				for i in range(len(self.database)): # check if this is old task
 					if data.TASK_ID == self.database[i].task_id:
+						rospy.loginfo('MASTER:tasked aldy in database')
 						check_flag = 1
 						break
 				if check_flag == 0: # append if not old task
 					self.database.append(TASK_DATA(data))
+					rospy.loginfo('MASTER:adding new task to database')
 
-		# read cost 
+		# read cost
 		elif data.purpose == self.COST: # there are some problem here
-			if data.sender_state == "IDLE": # sender is normal ppl
-				if len(self.database) > 0: # i got some task working
+			rospy.loginfo('MASTER: recv in cost')
+			if data.sender_state == self.IDLE: # sender is normal ppl
+				rospy.loginfo('MASTER:sender is idle')
+				if len(self.database) > 0 or self.current_task.task_id != None : # i got some task working
+					rospy.loginfo('MASTER: IM GOT SOME TASK')
 					flag_task = 0
-					if data.TASK_ID == self.database[i].task_id:
+					if len(self.database)>0:
+						if data.TASK_ID == self.database[i].task_id :
+							flag_task = 1
+					elif self.current_task.task_id != None:
 						flag_task = 1
 					if flag_task == 1: # task is within my task
-						if self.current_state == "WORKING":
-							self.reply_normal(data,'W') # reply without me only
-						else:			
+						rospy.loginfo('MASTER: task is in my list')
+						if self.current_state == self.WORKING:
+							self.reply_normal(data,self.WORKING) # reply without me only
+							rospy.loginfo('MASTER: IM WORKING')
+						else:
+							rospy.loginfo('MASTER: IM IDLE')
 							if len(data.signatures) == 0: # i receive the last data
 								if data.cost.cost_owner == self.ID: # if it is me then i m the chosen one
+									rospy.loginfo('MASTER: IM GOING to do the job')
 									# here do task confirmation
 									s = Task_confirm(data.cost)
-									self.current_state = "COST_DONE"
+									self.current_state = self.COSTDONE
 									if s.is_taken: # check if want to take
-										self.current_state = "WORKING"
+										self.current_state = self.WORKING
 										self.current_task = data.TASK_ID
-									else: 
-										self.current_state = "IDLE"
+									else:
+										self.current_state = self.IDLE
 								else: # receive the last but not me
+									rospy.loginfo('MASTER: IM NOT lowest cost')
 									pass # then do nothing
 							else: # not me receive the last
 								# then just continue to pass with compare to my cost
+								rospy.loginfo('MASTER: Continue pass cost')
 								self.reply_compare(data,self.database)
 					else: # task is not in my task
+						rospy.loginfo('MASTER:I didnt recv this task')
 						self.reply_normal(data)
 				else: # dont even have a task
+					rospy.loginfo('MASTER:I didnt recv this task')
 					# return im normal
 					self.reply_normal(data)
-			elif data.sender_state == "WORKING":
-				if self.current_state == "WORKING":
-					self.reply_normal(data,'W')
+			elif data.sender_state == self.WORKING:
+				if self.current_state == self.WORKING:
+					rospy.loginfo('MASTER:sender is WORKING im WORKING')
+					self.reply_normal(data,self.WORKING)
 				else:
+					rospy.loginfo('MASTER:sender is WORKING im IDLE')
 					self.reply_normal(data)
 
-		# read node 
+		# read node
 		elif data.purpose == self.NODE:
 			if not WORKING_STATION: # working station not need to recv and store TASK
+				rospy.loginfo('MASTER:Node recv and updating')
 				for i in range(len(self.database)): # check if this is old task # remove node task
 					if data.TASK_ID == self.database[i].task_id:
 						self.database.remove(self.database[i])
 						break
-				# renew node list 
+				# renew node list
 				self.node_data.update(data)
 				# if gonna hit will need to wait Shengming to ask !!!
 			else:
+				rospy.loginfo('MASTER:im working station dont care node asking')
 				# asking working station their node current not write anything to prevent it is empty by default
 				pass
 		else:
@@ -246,7 +277,7 @@ class WIFI_MASTER():
 		if WORKING_STATION :
 			if data.purpose == self.WEB:
 			# check if data to working station recv ?
-			# 	do a function to adjust the thing 
+			# 	do a function to adjust the thing
 				self.update_web(data.ctrldata)
 		##########################################################################################
 
@@ -254,11 +285,11 @@ class WIFI_MASTER():
 			while(1):
 				pass
 				if self.lock_1 == self.UNLOCK:
-					break 
+					break
 		self.lock_1 = self.LOCK
 
 	def update_job(self):
-		rospy.loginfo('start background process data')
+		rospy.loginfo('MASTER:start background process data')
 		last = time.time()
 		last_node = time.time()
 		while(1):
@@ -266,35 +297,41 @@ class WIFI_MASTER():
 			if self.lock_1 == self.LOCK:
 				self.lock_1 = self.UNLOCK
 
-			current = time.time()	
+			current = time.time()
 			if current - last > 0.1 : # in sec
 				last = current
-				car = ros_serv_("N")
+				try:
+					car = ros_serv_("N")
+				except:
+					rospy.loginfo('MASTER:closed ros_serv')
+
 				self.current_node = car.nd_ocp
 				# check for input and do process to state
 				# got IDLE , HOMING , TEACHING , WORKING
 
 				if car.mode & 1 :
-					self.car_state = "IDLE" 
+					self.car_state = self.IDLE
 					# checking for task and calculate cost and save and send
 					# check for exists of task database
 					if len(self.database) == 0:
 						pass
 					else:
+						rospy.loginfo('MASTER:processing task')
 						self.start_ask_cost()
 
 				elif car.mode & 4 :
-					self.car_state = "HOMING"
+					self.car_state = self.HOMING
 				elif car.mode & 8 :
-					self.car_state = "TEACHING"
+					self.car_state = self.TEACHING
 					continue
 				elif car.mode & 16 :
-					self.car_state = "WORKING"
+					self.car_state = self.WORKING
 					# here start to keep asking node !!!
-					current_node = time.time()	
-					if current_node - last_node > 0.1 : # in sec
+					current_node = time.time()
+					if current_node - last_node > 1 : # in sec
 						last_node = current_node
 						self.send_all_node()
+					self.task_tag = 1
 
 			if self.shut == 1: # for closing this thread
 				break
@@ -302,13 +339,13 @@ class WIFI_MASTER():
 			# for working station used
 			if WORKING_STATION :
 				if self.button_pressed():
-					rospy.loginfo('UI button pressed announce data')
-					self.announce_new_task()	
+					rospy.loginfo('MASTER:UI button pressed announce data')
+					self.announce_new_task()
 				pass
 			else: # if not working station need to send data constantly to WEB 
 			########################################################################################
 				pass
-		rospy.loginfo('done')
+		rospy.loginfo('MASTER:all done')
 
 	##############################################################################
 	def button_pressed(self):
@@ -337,7 +374,7 @@ class WIFI_MASTER():
 	##############################################################################
 
 	def sent_all_node(self):
-		rospy.loginfo('send all')
+		rospy.loginfo('MASTER:send all')
 		w = WifiIO()
 		w.signatures = ["ALL"]
 		w.TASK_ID = self.current_task
@@ -346,48 +383,57 @@ class WIFI_MASTER():
 		s = send_wifi(Send_Task(header,w)) # ask other cost
 
 
-	def reply_normal(self,data,state="I"): # input is wifiIO
-		rospy.loginfo('reply normal')
+	def reply_normal(self,data,state="IDLE"): # input is wifiIO
+		rospy.loginfo('MASTER:reply normal')
 		w = data
 		w.signatures = data.signatures
 		w.cost  = data.cost
 		w.sender_state = state
 		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		s = send_wifi(Send_Task(header,w)) # ask other cost
+		ww = Send_Task()
+		ww.header = header
+		ww.info = w
+		s = send_wifi(ww) # ask other cost
 
 	def reply_compare(self,data,task): # input is wifiIO and database
-		rospy.loginfo('reply compare')
+		rospy.loginfo('MASTER:reply compare')
 		w = data
 		for task_ in task:
 			if task_.task_id == data.TASK_ID:
 				if data.cost.cost >  task_.self_cost: # this means my cost is lower
 					w.cost.cost_owner = self.ID
 					w.cost			  = task_.self_cost
-		w.sender_state = "I"
+		w.sender_state = self.IDLE
 		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		s = send_wifi(Send_Task(header,w)) # ask other cost
+		ww = Send_Task()
+		ww.header = header
+		ww.info = w
+		s = send_wifi(ww) # ask other cost
 
 	def start_ask_cost(self):
-		rospy.loginfo('start ask cost')
+		rospy.loginfo('MASTER:start ask cost')
 		self.current_task = self.database.pop(0)
-		ret = ask_cost(task.task_node) # calc self cost
+		rospy.loginfo('MASTER:calc cost')
+		ret = ask_cost(self.current_task.task_node) # calc self cost
+		rospy.loginfo('MASTER:get cost: '+str(ret.cost))
 		self.current_task.self_cost = ret.cost
-		# NOW ask others their cost 
+		# NOW ask others their cost
 		# need to send task need to use WIFI IO now
 		header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w = self.wifiio_cost_update(self.current_task)
-		w.sender_state = "I"
-		s = send_wifi(Send_Task(header,w)) # ask other cost
-		self.current_state = "COST_ING"
+		w.sender_state = self.current_state
+		w.purpose = self.COST
+		s = send_wifi(w) # ask other cost
+		self.current_state = self.COSTING
 
 
 	def wifiio_cost_update(self,data): # input is current task, a task obj
-		rospy.loginfo('cost update')
+		rospy.loginfo('MASTER:cost update')
 		w = WifiIO()
 		w.author = self.ID
 		# sender is done in client part
 		w.TASK_ID = data.task_id
-		w.signatures = "ALL"
+		w.signatures = ["ALL"]
 		w.cost.cost    = data.self_cost
 		w.cost.cost_owner = self.ID
 		w.cost.target  = data.task_node
@@ -404,15 +450,15 @@ class TASK_DATA():
 
 class NODE_DATA():
 	def __init__(self,data_): # input data should be host list
-		self.data = []	
+		self.data = []
 		self.length = len(data_)
 		for i in range(self.length):
 			self.data.append((data_[i][0],RouteNode())) # host ID , routenode
-	
+
 	def check_hit(self,my_node): # will return will hit or not # check for next node
 		for i in range(self.length):
 			if my_node.route == self.data[i][1].route and my_node.node == self.data[i][1].node: 
-				return True # will hit 
+				return True # will hit
 		return False # will not hit
 
 	def update_data(self,data_): # input is wifiio

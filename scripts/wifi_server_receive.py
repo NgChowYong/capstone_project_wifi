@@ -136,10 +136,12 @@ class Wifi():
 		rospy.loginfo('start receive data')
 		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', data_rc.decode('utf-8'))
 		flag = 0
+		for i in range(len(self.d.signatures)):
+			self.d.signatures[i] =	eval(self.d.signatures[i])
 
 		if self.d.purpose == self.TASK: # reply to working station
             		flag = 1
-			self.d.signatures = self.d.sender
+			self.d.signatures = [self.d.sender]
 		elif self.d.purpose == self.NODE: # reply node
 			flag = 2
 			self.d.signatures = self.d.sender
@@ -151,12 +153,24 @@ class Wifi():
 			flag = 0
 
 		if self.d.purpose == self.WEB and WORKING_STATION == False : # recv WEB 
-	        	rospy.loginfo('done receive data ')
+	        	rospy.loginfo('done receive data web')
 	        	return flag,self.d
 
 		# means i truely receive this message so i sign
-		if self.ID in self.d.signatures:
-			self.d.signatures.remove(self.ID)
+		for i in self.d.signatures:
+			if self.ID == i[0]:
+				self.d.signatures.remove(i)
+				break
+
+                if len(self.d.signatures) > 1 :
+                        rospy.loginfo('>1 : '+str(len(self.d.signatures)))
+                        for i in range(len(self.d.signatures)):
+                                #rospy.loginfo('sign : '+str(data.signatures[i]))
+                                #rospy.loginfo('sign : '+str(type(str(data.signat$
+                                self.d.signatures[i] = str(self.d.signatures[i])
+                else:
+                        self.d.signatures = [str(self.d.signatures)]
+
 
 		# send back~
 		self.rossend(self.d)
