@@ -139,6 +139,7 @@ class WIFI_MASTER():
 		self.LOCK   = 1
 		self.UNLOCK = 0
 		self.lock_1 = self.LOCK
+		self.lock_once = 0
 
 		# list of other car
 		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
@@ -187,6 +188,9 @@ class WIFI_MASTER():
 	def subs(self,data): # read data from wifi # data is WifiIO
 		# read new task
 		rospy.loginfo('MASTER:recv data in master')
+		while self.lock_once == 1: # must process each at once otherwise collision of data or mixing of data
+			pass
+		self.lock_once = 1
 		#rospy.loginfo(str(data))
 		rospy.loginfo('MASTER:recv data from wifi with purpose : '+str(data.purpose))
 		if data.purpose == self.TASK:
@@ -204,6 +208,7 @@ class WIFI_MASTER():
 		# read cost
 		elif data.purpose == self.COST: # there are some problem here
 			rospy.loginfo('MASTER: recv in cost')
+			#rospy.loginfo('MASTER: cost: '+str(data.cost))
 			if data.sender_state == self.IDLE: # sender is normal ppl
 				rospy.loginfo('MASTER:sender is idle')
 				if len(self.database) > 0 or self.current_task != None : # i got some task working
@@ -226,7 +231,7 @@ class WIFI_MASTER():
 						else:
 							rospy.loginfo('MASTER: IM IDLE')
 							if len(data.signatures) == 0: # i receive the last data
-								if data.cost.cost_owner == self.ID: # if it is me then i m the chosen one
+								if data.cost.cost_owner == self.ID and data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
 									rospy.loginfo('MASTER: IM GOING to do the job')
 									# here do task confirmation
 									s = Task_confirm(data.cost)
@@ -237,6 +242,7 @@ class WIFI_MASTER():
 									else:
 										self.current_state = self.IDLE
 								else: # receive the last but not me
+									self.current_task = None
 									rospy.loginfo('MASTER: IM NOT lowest cost')
 									pass # then do nothing
 							else: # not me receive the last
@@ -279,6 +285,8 @@ class WIFI_MASTER():
 		else:
 			pass
 
+
+
 		#########################################################################################
 		# for working station used
 		if WORKING_STATION :
@@ -294,6 +302,7 @@ class WIFI_MASTER():
 				if self.lock_1 == self.UNLOCK:
 					break
 		self.lock_1 = self.LOCK
+		self.lock_once = 0
 
 	def update_job(self):
 		rospy.loginfo('MASTER:start background process data')
@@ -387,7 +396,10 @@ class WIFI_MASTER():
 		w.TASK_ID = self.current_task
 		w.node = self.current_node
 		header = Header(stamp=rospy.Time.now(), frame_id='base')
-		s = send_wifi(Send_Task(header,w)) # ask other cost
+		w.purpose = self.NODE_ASK
+		w.sender_state = self.IDLE
+		w.author = self.ID
+		s = send_wifi(w) # ask other cost
 
 
 	def reply_normal(self,data,state="IDLE"): # input is wifiIO

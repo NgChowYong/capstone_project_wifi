@@ -145,7 +145,7 @@ class Wifi():
 			self.d.signatures = [self.d.sender]
 		elif self.d.purpose == self.NODE: # reply node
 			flag = 2
-			self.d.signatures = self.d.sender
+			self.d.signatures = [self.d.sender]
 		elif self.d.purpose == self.NODE_REPLY: # just rossend
 			flag = 0
 		elif self.d.purpose == self.COST: # remove signature then rossend
