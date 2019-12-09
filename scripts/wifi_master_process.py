@@ -13,7 +13,7 @@ from ros_wifi.srv import Send_Task,Send_TaskResponse
 from ros_wifi.srv import WifiNodeOcp,WifiNodeOcpResponse
 from ros_wifi.srv import WifiTaskConfirm,WifiTaskConfirmResponse
 from ros_wifi.srv import WifiNodeCost,WifiNodeCostResponse
-
+from flask import Flask,request,render_template
 
 if rospy.has_param('Working_Station'):
 	WORKING_STATION = rospy.get_param('Working_Station')
@@ -77,6 +77,32 @@ def send_wifi(data):
 	except rospy.ServiceException, e:
 		rospy.loginfo("Service call failed:")
 
+counter = 0
+def Web_service():
+	app=Flask(__name__)
+
+	@app.route('/',methods=['GET'])
+	def initialize():
+		global counter
+		counter = 0
+		return render_template('index.html',call=counter)
+
+	@app.route('/submit',methods=['POST'])
+	def submit():
+		global counter
+		counter += 1
+		return render_template('index.html',call=counter)
+
+	@app.route('/reset',methods=['POST'])
+	def reset():
+		global counter
+		counter = 0
+		return render_template('index.html',call=counter)
+
+	app.run(debug=True,port=5000)
+	while 1:
+		if self.shut == 1: # for closing this thread
+			break
 
 
 class WIFI_MASTER():
@@ -93,11 +119,14 @@ class WIFI_MASTER():
 		###
 
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
-
 		rospy.loginfo("working : "+str(WORKING_STATION))
 		rospy.loginfo('initialize wifi master service ')
+
 		add_thread = threading.Thread(target = self.update_job)
   	  	add_thread.start()
+		if WORKING_STATION :
+			add_thread = threading.Thread(target = Web_service)
+	  	  	add_thread.start()
 		
 		# for closing thread and node		
 		rospy.spin()
@@ -125,6 +154,7 @@ class WIFI_MASTER():
 			self.port     = 12345
 
 		# some parameter
+		self.cc = 0
 		self.COST = 'C'
 		self.TASK = 'W'
 		self.NODE = 'A'
@@ -301,14 +331,9 @@ class WIFI_MASTER():
 
 			if self.shut == 1: # for closing this thread
 				break
-#########################################################################################
+			#########################################################################################
 			# for working station used
 			if WORKING_STATION :
-				# check if button pressed
-				# if pressed
-				#	announce new task and send to all others
-				# else:
-				#	pass
 				if self.button_pressed():
 					rospy.loginfo('UI button pressed announce data')
 					self.announce_new_task()	
@@ -318,32 +343,30 @@ class WIFI_MASTER():
 				pass
 		rospy.loginfo('done')
 
-##############################################################################
+	##############################################################################
 	def button_pressed(self):
-		ff = open("/home/testing_file.txt",'r')
-		self.button_press = ff.read()
-		ff.close()
-		if self.button_press == 0:
+		if counter == 0 :
 			return False
 		else:
-			ff = open("/home/danlu008/Desktop/testing_file.txt",'w')
-			ff.write('0')
-			ff.close()
-			rospy.loginfo("button pressed")
-			self.button_press = 0
+			self.cc = counter
+			
+		if self.button_press == self.cc:
+			return False
+		else:
+			self.button_press = self.cc
 			return True
 
 	def announce_new_task(self):# sending task , task node , author
 		w = WifiIO()
 		w.signatures = ["ALL"]
-		w.TASK_ID = str(time.time())
+		w.TASK_ID = str(self.ID+str(self.cc))
 		w.node = self.current_node
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
 
 	def update_web(self,ctrldata):# function provided by Meng
 		return 1
-##############################################################################
+	##############################################################################
 
 	def sent_all_node(self):
 		rospy.loginfo('send all')
