@@ -47,7 +47,7 @@ def send_wifi(dt):  # call for service
 		rospy.loginfo("Service call failed")
 
 class Wifi():
-	def __init__(self,addr="127.0.0.1"):
+	def __init__(self):
 		# self ID = ID , port number
 		if rospy.has_param('IP_address'):
 			self.ID = rospy.get_param('IP_address')
@@ -135,7 +135,7 @@ class Wifi():
 	def receive_data(self,data_rc):
 		rospy.loginfo('start receive data')
 		d = json.loads(data_rc)
-		rospy.loginfo('data cond: '+ str(d))
+		#rospy.loginfo('data cond: '+ str(d))
 		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', d)
 		flag = 0
 
