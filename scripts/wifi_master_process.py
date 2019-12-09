@@ -19,6 +19,8 @@ if rospy.has_param('Working_Station'):
 	WORKING_STATION = rospy.get_param('Working_Station')
 else:
 	WORKING_STATION = False
+# for share data of web app and code
+counter = 0
 
 # WORKING_STATION = True # True or False
 
@@ -77,34 +79,6 @@ def send_wifi(data):
 	except rospy.ServiceException, e:
 		rospy.loginfo("Service call failed:")
 
-counter = 0
-def Web_service():
-	app=Flask(__name__)
-
-	@app.route('/',methods=['GET'])
-	def initialize():
-		global counter
-		counter = 0
-		return render_template('index.html',call=counter)
-
-	@app.route('/submit',methods=['POST'])
-	def submit():
-		global counter
-		counter += 1
-		return render_template('index.html',call=counter)
-
-	@app.route('/reset',methods=['POST'])
-	def reset():
-		global counter
-		counter = 0
-		return render_template('index.html',call=counter)
-
-	app.run(debug=True,port=5000)
-	while 1:
-		if self.shut == 1: # for closing this thread
-			break
-
-
 class WIFI_MASTER():
 	def __init__(self):
 		#setting up parameter
@@ -124,9 +98,6 @@ class WIFI_MASTER():
 
 		add_thread = threading.Thread(target = self.update_job)
   	  	add_thread.start()
-		if WORKING_STATION :
-			add_thread = threading.Thread(target = Web_service)
-	  	  	add_thread.start()
 		
 		# for closing thread and node		
 		rospy.spin()
@@ -455,8 +426,31 @@ class NODE_DATA():
 
 
 if __name__ == '__main__':
+	# run web app
+	app=Flask(__name__)
+
+	@app.route('/',methods=['GET'])
+	def initialize():
+		global counter
+		counter = 0
+		return render_template('index.html',call=counter)
+
+	@app.route('/submit',methods=['POST'])
+	def submit():
+		global counter
+		counter += 1
+		return render_template('index.html',call=counter)
+
+	@app.route('/reset',methods=['POST'])
+	def reset():
+		global counter
+		counter = 0
+		return render_template('index.html',call=counter)
+
+	app.run(debug=True,port=5000)
+
     #try:
-    w = WIFI_MASTER()
+    	w = WIFI_MASTER()
 	#  w.talker()
     #except rospy.ROSInterruptException:
     #    rospy.loginfo('error')
