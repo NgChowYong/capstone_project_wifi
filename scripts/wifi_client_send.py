@@ -96,7 +96,7 @@ class Wifi():
 		conn, addr = sock.accept()  # Should be ready to read
 		rospy.loginfo('accepted connection from : '+str( addr))
 		conn.setblocking(False)
-		data = [addr,self.msg]
+		data = [addr,conn]
 		events = selectors.EVENT_READ | selectors.EVENT_WRITE
 		self.sel.register(conn, events, data=data)
 
@@ -113,14 +113,18 @@ class Wifi():
 				# rospy.loginfo('should not receive any data here !!!!')
 				pass
 		if mask & selectors.EVENT_WRITE:
-			if data in self.d.signatures:
-				# could be improved by pruning of send signatures
-				rospy.loginfo('start sending wifi ')
-				# rospy.loginfo self.d
-				self.wifi_send(sock,self.d)
-				# rospy.loginfo self.d
-				rospy.loginfo('sending to connection'+str(data))
-				return 1
+			for i in self.d.signatures:
+				if data[0] == i[0]:
+					# could be improved by pruning of send signatures
+					rospy.loginfo('start sending wifi ')
+					# rospy.loginfo self.d
+					try:
+						self.wifi_send(sock,self.d)
+					except:
+						rospy.loginfo('error in sending data !!!!!!!!! ')
+					# rospy.loginfo self.d
+					rospy.loginfo('sending to connection'+str(data))
+					return 1
 		return 0
 
 	def handle_wifi_send(self,req): # input of service is  header and wifiio output is error code and header
