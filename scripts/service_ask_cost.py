@@ -14,12 +14,14 @@ from ros_wifi.msg import CtrlData
 from std_msgs.msg import Header
 from ros_wifi.srv import WifiNodeCost,WifiNodeCostResponse
 
-COST = 10
+import random
+COST = random.uniform(1,15)
 
 def ad(req):
-    rospy.loginfo('recv')
-    rospy.loginfo(req)
-    send_b = Ask_DataResponse()
+    global COST
+    rospy.loginfo('ask cost recv ')
+    #rospy.loginfo(req)
+    send_b = WifiNodeCostResponse()
     send_b.error_code = 'O'
     send_b.cost = COST
     COST = COST + 1

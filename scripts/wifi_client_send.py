@@ -85,16 +85,16 @@ class Wifi():
 
 	def wifi_send(self,sock,data__):
 		data = copy.deepcopy(data__)
-		if len(data.signatures) > 1 :
+		if len(data.signatures) > 0 :
 			rospy.loginfo('>1 : '+str(len(data.signatures)))
 			for i in range(len(data.signatures)):
 				#rospy.loginfo('sign : '+str(data.signatures[i]))
 				#rospy.loginfo('sign : '+str(type(str(data.signatures[i]))))
 				data.signatures[i] = str(data.signatures[i])
-		else:
-			data.signatures = [str(data.signatures)]
+		#else:
+		#	data.signatures = [str(data.signatures)]
 
-		rospy.loginfo('start wifi send')
+		rospy.loginfo('start wifi send'+str(data.signatures))
 		# json.dumps(data)
 		j = json_message_converter.convert_ros_message_to_json(data)
 		j = j.encode('utf-8')
@@ -140,13 +140,21 @@ class Wifi():
 		return 0
 
 	def handle_wifi_send(self,req): # input of service is  header and wifiio output is error code and header
-
+		rospy.loginfo('start client')
+		rospy.loginfo(str(req.info.signatures))
 		send_no = self.sending_no
 		# read input data
 		head = req.header
 		self.d = req.info
 		self.d.sender = self.ID
 		# note that author decide by master only
+
+		# for clearing string tuple problem
+		if self.d.signatures[0] != "ALL":
+			while not isinstance(self.d.signatures[0],tuple):
+				self.d.signatures = self.d.signatures[0]
+			for i in range(len(self.d.signatures)):
+        	                self.d.signatures[i] =  eval(self.d.signatures[i])
 
 		if req.info.purpose == self.NODE_REPLY: # routenode details is renewed in master node 
 			self.d.purpose = 'A'
@@ -177,7 +185,7 @@ class Wifi():
 					self.d.signatures.append(self.host_list[i])
 		self.server_addr = list(self.d.signatures)
 		# currently msg sending is one to one only not one to many for every message, except for task 
-		rospy.loginfo('data storing done with purpose : '+str(req.info.purpose))
+		rospy.loginfo('client recv want to send data with purpose : '+str(req.info.purpose))
 		rospy.loginfo('need to send to : '+str(self.d.signatures))
 		flag = 0
 		while not rospy.is_shutdown():
@@ -205,8 +213,7 @@ class Wifi():
 							data = key.data
 							self.sel.register(sock, events, data=data)
 						elif fff == 1:
-
-							rospy.loginfo(str(self.server_addr))
+							# rospy.loginfo(str(self.server_addr))
 							self.server_addr.remove(key.data)
 						flag += fff
 				# for service return
@@ -215,7 +222,7 @@ class Wifi():
 				    resp = Send_TaskResponse()
 				    resp.header = Header(stamp=rospy.Time.now(), frame_id='base')
 				    resp.error_code = '1'  # return int16 success # success~~
-				    rospy.loginfo('done and closing')
+				    rospy.loginfo('client done and closing')
 				    flag = 0
 				    return resp
 			#except :

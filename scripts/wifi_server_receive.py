@@ -23,28 +23,28 @@ else:
 def ros_serv_(p):  # call for service # input is string
 	rospy.wait_for_service('robot_wifi_askdata_inner') # wait until service available # service name
 	try:
-		rospy.loginfo('ask central for data')
+		rospy.loginfo('SERVER:ask central for data')
 		ask_data = rospy.ServiceProxy('robot_wifi_askdata_inner', Ask_Data) # handler; name, service name the --- one
 		header = Header(stamp=rospy.Time.now(), frame_id='base')
 		purpose = p
 		s = ask_data(header,purpose)
-		rospy.loginfo('ask central for data done')
+		rospy.loginfo('SERVER:ask central for data done')
 		return s.ctrlData
 	except rospy.ServiceException, e:
-		rospy.loginfo("Service call failed")
+		rospy.loginfo("SERVER:Service call failed")
 
 def send_wifi(dt):  # call for service
 	rospy.wait_for_service('send_task') # wait until service available # service name
 	try:
-		rospy.loginfo('send_wifi start')
+		rospy.loginfo('SERVER:send_wifi start')
 		send_t = rospy.ServiceProxy('send_task', Send_Task) # handler; name, service name the --- one
 		header = Header(stamp=rospy.Time.now(), frame_id='base')
 		s = send_t(header,dt)
-		rospy.loginfo('send_wifi done')
+		rospy.loginfo('SERVER:send_wifi done')
 		# rospy.loginfo('seveice get :',s)
 		return s
 	except rospy.ServiceException, e:
-		rospy.loginfo("Service call failed")
+		rospy.loginfo("SERVER:Service call failed")
 
 class Wifi():
 	def __init__(self):
@@ -76,7 +76,7 @@ class Wifi():
 		# initial node
 		rospy.init_node('wifi_server_receive', anonymous=True)
 		self.pub = rospy.Publisher('robot_wifi_io', WifiIO , queue_size=30) # node, msg, size
-		rospy.loginfo("ID:"+str(self.ID)+" port:"+str(self.port))
+		rospy.loginfo("SERVER:ID:"+str(self.ID)+" port:"+str(self.port))
 
 		# wifi connection
 		self.lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -85,7 +85,7 @@ class Wifi():
 		self.lsock.setblocking(False)
 		self.sel = selectors.DefaultSelector()
 		self.sel.register(self.lsock, selectors.EVENT_READ, data=None)# key
-		rospy.loginfo('listening on '+str (self.ID)+" with port "+str( self.port))
+		rospy.loginfo('SERVER:listening on '+str (self.ID)+" with port "+str( self.port))
 
 		#rate = rospy.Rate(10) # 10hz
 		while not rospy.is_shutdown():
@@ -108,7 +108,7 @@ class Wifi():
 
 	def accept_wrapper(self,sock): #its from listening socket and accept connection
 		conn, addr = sock.accept()  # Should be ready to read
-		rospy.loginfo('accepted connection from'+str( addr))
+		rospy.loginfo('SERVER:accepted connection from'+str( addr))
 		conn.setblocking(False)
 		data = [addr]
 		events = selectors.EVENT_READ | selectors.EVENT_WRITE
@@ -121,25 +121,28 @@ class Wifi():
 		if mask & selectors.EVENT_READ:
 			recv_data = sock.recv(1024)  # Should be ready to read
 			if recv_data:
-				rospy.loginfo('recv from : '+str(data[0]))
+				rospy.loginfo('SERVER:recv from : '+str(data[0]))
 				flag,data_ = self.receive_data(recv_data) #
 				self.previous_sender = data_.sender
 
 		if mask & selectors.EVENT_WRITE: #normally write
 			if flag != 0:
 				if self.previous_sender == data and self.previous_sender!= self.ID: 
-					rospy.loginfo('rdy to reply data')
+					rospy.loginfo('SERVER:rdy to reply data')
 					self.reply_data(data_,flag) # maybe can use sock as signature to return
 					flag = 0
 
 	def receive_data(self,data_rc):
-		rospy.loginfo('start receive data')
+		rospy.loginfo('SERVER:start receive data')
 		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', data_rc.decode('utf-8'))
 		flag = 0
+		for i in range(len(self.d.signatures)):
+			self.d.signatures[i] =	eval(self.d.signatures[i])
+		rospy.loginfo('SERVER:start receive data'+str(self.d.signatures))
 
 		if self.d.purpose == self.TASK: # reply to working station
             		flag = 1
-			self.d.signatures = self.d.sender
+			self.d.signatures = [self.d.sender]
 		elif self.d.purpose == self.NODE: # reply node
 			flag = 2
 			self.d.signatures = self.d.sender
@@ -151,17 +154,29 @@ class Wifi():
 			flag = 0
 
 		if self.d.purpose == self.WEB and WORKING_STATION == False : # recv WEB 
-	        	rospy.loginfo('done receive data ')
+	        	rospy.loginfo('SERVER:done receive data web')
 	        	return flag,self.d
 
 		# means i truely receive this message so i sign
-		if self.ID in self.d.signatures:
-			self.d.signatures.remove(self.ID)
+		for i in self.d.signatures:
+			if self.ID == i[0]:
+				self.d.signatures.remove(i)
+				break
+
+                if len(self.d.signatures) >= 1 :
+                        rospy.loginfo('>1 : '+str(len(self.d.signatures)))
+                        for i in range(len(self.d.signatures)):
+                                #rospy.loginfo('sign : '+str(data.signatures[i]))
+                                #rospy.loginfo('sign : '+str(type(str(data.signat$
+                                self.d.signatures[i] = str(self.d.signatures[i])
+                else:
+                        self.d.signatures = []
+
 
 		# send back~
 		self.rossend(self.d)
 
-	        rospy.loginfo('done receive data ')
+	        rospy.loginfo('SERVER:done receive data ')
 	        return flag,self.d
 
 
@@ -174,13 +189,13 @@ class Wifi():
 		#	self.reply_cost(data_rp)
 
 	def reply_ok(self,d):
-		rospy.loginfo('reply OK')
+		rospy.loginfo('SERVER:reply OK')
 		d.purpose = 'O'
 		send_wifi(d)
 
 	def reply_node(self,d):
-		rospy.loginfo("start reply node req ")
-		rospy.loginfo("ask for node ")
+		rospy.loginfo("SERVER:start reply node req ")
+		rospy.loginfo("SERVER:ask for node ")
 		if WORKING_STATION :
 			b = Ask_Data() # ask data reply
 			b.np_ocp.route = -1
@@ -190,14 +205,14 @@ class Wifi():
 			b.np_ocp.pos.z = -1
 		else:
 			b = ros_serv_(d.purpose)
-		rospy.loginfo('reply for node service')
+		rospy.loginfo('SERVER:reply for node service')
 		d.purpose = 'A'
 		d.node = b.nd_ocp
 		send_wifi(d)
-		rospy.loginfo('end reply node req')
+		rospy.loginfo('SERVER:end reply node req')
 
 	def rossend(self,data):
-		rospy.loginfo("ros send data")
+		rospy.loginfo("SERVER:ros send data")
 		self.pub.publish(data)
 
 class DATA():
@@ -218,4 +233,4 @@ if __name__ == '__main__':
     try:
         w = Wifi()
     except rospy.ROSInterruptException:
-        rospy.loginfo('error')
+        rospy.loginfo('SERVER:error')
