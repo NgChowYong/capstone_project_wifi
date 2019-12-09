@@ -8,7 +8,7 @@ import rospy
 import socket
 import types
 import json
-
+import copy
 from ros_wifi.msg import WifiIO,Cost,RouteNode
 from std_msgs.msg import Header,String
 from ros_wifi.srv import Send_Task,Send_TaskResponse
@@ -83,12 +83,22 @@ class Wifi():
 		self.NODE_REPLY = 'A'
 		self.sending_no = 1
 
-	def wifi_send(self,sock,data):
+	def wifi_send(self,sock,data__):
+		data = copy.deepcopy(data__)
+		if len(data.signatures) > 1 :
+			rospy.loginfo('>1 : '+str(len(data.signatures)))
+			for i in range(len(data.signatures)):
+				#rospy.loginfo('sign : '+str(data.signatures[i]))
+				#rospy.loginfo('sign : '+str(type(str(data.signatures[i]))))
+				data.signatures[i] = str(data.signatures[i])
+		else:
+			data.signatures = [str(data.signatures)]
+
 		rospy.loginfo('start wifi send')
-		j = json_message_converter.convert_ros_message_to_json(data)
 		# json.dumps(data)
-		rospy.loginfo('json done')
-		sock.sendall(j.encode('utf-8'))
+		j = json_message_converter.convert_ros_message_to_json(data)
+		j = j.encode('utf-8')
+		sock.sendall(j)
 		rospy.loginfo('sent data !! ')
 
 	def accept_wrapper(self,sock): #its from listening socket and accept connection
@@ -165,13 +175,11 @@ class Wifi():
 				# for i in range(len(self.host_list)):
 				for i in range(send_no):
 					self.d.signatures.append(self.host_list[i])
-
+		self.server_addr = list(self.d.signatures)
+		# currently msg sending is one to one only not one to many for every message, except for task 
 		rospy.loginfo('data storing done with purpose : '+str(req.info.purpose))
 		rospy.loginfo('need to send to : '+str(self.d.signatures))
-
-		# currently msg sending is one to one only not one to many for every message, except for task 
 		flag = 0
-		self.server_addr = list(self.host_list)
 		while not rospy.is_shutdown():
 			#try:
 			if True:
