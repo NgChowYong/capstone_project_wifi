@@ -53,25 +53,24 @@ class Wifi():
 		self.ser = rospy.Service('send_task', Send_Task, self.handle_wifi_send)  # could need to add another class reference to direct the pointer to the class 
 		rospy.loginfo("current host list : "+str(self.host_list))
 		# server_addr = (host, port)
-		server_addr = []
-		for i in range(len(self.host_list)):
-			server_addr.append(self.host_list[i])
-		s_no = 0
+		self.server_addr = list(self.host_list)
+		self.s_no = 0
 		# start to connect to multiple host
 		self.sel = selectors.DefaultSelector()
-		for i in range(len(server_addr)):
+		for i in range(len(self.server_addr)):
 			connid = i + 1
  			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			sock.setblocking(False)
-			sock.connect_ex(server_addr[i]) # == 0 : # 0 for success
-			s_no = s_no + 1 # not everytime will connect
+			sock.connect_ex(self.host_list[i]) # == 0 : # 0 for success
+			# self.s_no = self.s_no + 1 # not everytime will connect
 			events = selectors.EVENT_READ | selectors.EVENT_WRITE
-			data = (server_addr[i])
+			data = (self.host_list[i])
 			self.sel.register(sock, events, data=data)
+			# sock.connect_ex(self.host_list[i]) # == 0 : # 0 for success
 		#self.sending_no = s_no
 	        self.sending_no = len(self.host_list)
 		rospy.loginfo('we connec robot no : '+str(self.sending_no))
-		rospy.loginfo('we actual connec robot no : '+str(s_no))
+		rospy.loginfo('we actual connec robot no : '+str(self.s_no))
 		rospy.loginfo('connection done wait for service call : ')
 		rospy.spin()
 
@@ -93,21 +92,13 @@ class Wifi():
 		rospy.loginfo('sent data !! ')
 
 	def accept_wrapper(self,sock): #its from listening socket and accept connection
-		for i in range(len(server_addr)):
-			connid = i + 1
- 			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			sock.setblocking(False)
-			sock.connect_ex(server_addr[i]) # == 0 : # 0 for success
-			s_no = s_no + 1 # not everytime will connect
-			events = selectors.EVENT_READ | selectors.EVENT_WRITE
-			data = (server_addr[i])
-			self.sel.register(sock, events, data=data)
 		#conn, addr = sock.accept()  # Should be ready to read
 		#rospy.loginfo('accepted connection from : '+str( addr))
 		#conn.setblocking(False)
 		#data = [addr,conn]
 		#events = selectors.EVENT_READ | selectors.EVENT_WRITE
 		#self.sel.register(conn, events, data=data)
+		pass
 
 	def service_connection(self,key, mask): # its client socket.
 		sock = key.fileobj
@@ -131,6 +122,8 @@ class Wifi():
 						self.wifi_send(sock,self.d)
 					except:
 						rospy.loginfo('error in sending data !!!!!!!!! ')
+						return 2
+					#	key.fileobj = key.fileobj.connect_ex(key.data)
 					# rospy.loginfo self.d
 					rospy.loginfo('sending to connection'+str(data))
 					return 1
@@ -178,19 +171,39 @@ class Wifi():
 
 		# currently msg sending is one to one only not one to many for every message, except for task 
 		flag = 0
-		acc = 0
+		self.server_addr = list(self.host_list)
 		while not rospy.is_shutdown():
 			#try:
 			if True:
-				events = self.sel.select(timeout=-1)#None
-				for key, mask in events:# return key and event(), key is named tuple got smth inside
+				events = self.sel.select(timeout=5)  #none
+				for key, mask in events:   # return key and event(), key is named tuple got smth inside
 					if key.data is None:
-						self.accept_wrapper(key.fileobj)
+						#self.accept_wrapper(key.fileobj)
+						#rospy.loginfo('accp ')
+						# reconnect
+						#key.fileobj.connect_ex(key.data)
+						pass
 				    	else:
-						fff = self.service_connection(key,mask)
+						fff = 0
+						if key.data in self.server_addr:
+							fff = self.service_connection(key,mask)
+						if fff == 2:
+							fff = 0
+							self.sel.unregister(key.fileobj)
+				 			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+							sock.setblocking(False)
+							sock.connect_ex(key.data) # == 0 : # 0 for success
+							events = selectors.EVENT_READ | selectors.EVENT_WRITE
+							data = key.data
+							self.sel.register(sock, events, data=data)
+						elif fff == 1:
+
+							rospy.loginfo(str(self.server_addr))
+							self.server_addr.remove(key.data)
 						flag += fff
 				# for service return
-				if flag == send_no:
+				if len(self.server_addr) == 0:
+				#if flag == send_no:
 				    resp = Send_TaskResponse()
 				    resp.header = Header(stamp=rospy.Time.now(), frame_id='base')
 				    resp.error_code = '1'  # return int16 success # success~~
