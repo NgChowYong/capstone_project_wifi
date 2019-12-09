@@ -69,10 +69,6 @@ def send_wifi(data):
 		rospy.loginfo('tell wifi to send data')
 		send_tt = rospy.ServiceProxy('send_task', Send_Task)
 		header_h = Header(stamp=rospy.Time.now(), frame_id='base')
-		#sss = Send_Task()
-		#sss.header = header_h
-		#sss.info = data
-		#rospy.loginfo(str(sss))
 		ret = send_tt(header_h,data)
 		rospy.loginfo('tell wifi to send done')
 		return ret
@@ -260,7 +256,7 @@ class WIFI_MASTER():
 				if self.lock_1 == self.UNLOCK:
 					break 
 		self.lock_1 = self.LOCK
-	
+
 	def update_job(self):
 		rospy.loginfo('start background process data')
 		last = time.time()
@@ -329,8 +325,9 @@ class WIFI_MASTER():
 
 	def announce_new_task(self):# sending task , task node , author
 		w = WifiIO()
+		w.purpose=self.TASK
 		w.signatures = ["ALL"]
-		w.TASK_ID = str(self.ID+str(self.cc))
+		w.TASK_ID = str(self.ID)+str(self.cc)
 		w.node = self.current_node
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
@@ -450,8 +447,9 @@ def apprun():
 
 if __name__ == '__main__':
 	# run web app
-	add_thread = threading.Thread(target = apprun)
-  	add_thread.start()
+	if WORKING_STATION:
+		add_thread = threading.Thread(target = apprun)
+  		add_thread.start()
     #try:
     	w = WIFI_MASTER()
 	#  w.talker()

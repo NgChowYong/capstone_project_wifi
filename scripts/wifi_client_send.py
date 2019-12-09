@@ -66,7 +66,7 @@ class Wifi():
 			sock.connect_ex(server_addr[i]) # == 0 : # 0 for success
 			s_no = s_no + 1 # not everytime will connect
 			events = selectors.EVENT_READ | selectors.EVENT_WRITE
-			data = (connid,[self.d])
+			data = (server_addr[i])
 			self.sel.register(sock, events, data=data)
 		#self.sending_no = s_no
 	        self.sending_no = len(self.host_list)
@@ -110,15 +110,16 @@ class Wifi():
 				if recv_data:
 					rospy.loginfo('received from connection'+str( data[0]))
 			except:
-				#rospy.loginfo('should not receive any data here !!!!')
+				# rospy.loginfo('should not receive any data here !!!!')
 				pass
 		if mask & selectors.EVENT_WRITE:
-			if data[0] in self.d.signatures:
+			if data in self.d.signatures:
+				# could be improved by pruning of send signatures
 				rospy.loginfo('start sending wifi ')
 				# rospy.loginfo self.d
 				self.wifi_send(sock,self.d)
 				# rospy.loginfo self.d
-				rospy.loginfo('sending to connection'+str(data[0]))
+				rospy.loginfo('sending to connection'+str(data))
 				return 1
 		return 0
 
@@ -159,10 +160,12 @@ class Wifi():
 				for i in range(send_no):
 					self.d.signatures.append(self.host_list[i])
 
-		rospy.loginfo('data storing done with purpose'+str(req.info.purpose))
+		rospy.loginfo('data storing done with purpose : '+str(req.info.purpose))
+		rospy.loginfo('need to send to : '+str(self.d.signatures))
 
 		# currently msg sending is one to one only not one to many for every message, except for task 
 		flag = 0
+		acc = 0
 		while not rospy.is_shutdown():
 			#try:
 			if True:
@@ -171,7 +174,12 @@ class Wifi():
 					if key.data is None:
 						self.accept_wrapper(key.fileobj)
 				    	else:
-						flag += self.service_connection(key,mask)
+						fff = self.service_connection(key,mask)
+						#if fff == 0 :
+						#	acc += 1
+						#if acc % 5000 == 0:
+						#	rospy.loginfo('not connected for n times : '+str(acc))
+						flag += fff
 				# for service return
 				if flag == send_no:
 				    resp = Send_TaskResponse()
