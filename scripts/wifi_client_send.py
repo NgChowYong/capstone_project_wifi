@@ -93,12 +93,21 @@ class Wifi():
 		rospy.loginfo('sent data !! ')
 
 	def accept_wrapper(self,sock): #its from listening socket and accept connection
-		conn, addr = sock.accept()  # Should be ready to read
-		rospy.loginfo('accepted connection from : '+str( addr))
-		conn.setblocking(False)
-		data = [addr,conn]
-		events = selectors.EVENT_READ | selectors.EVENT_WRITE
-		self.sel.register(conn, events, data=data)
+		for i in range(len(server_addr)):
+			connid = i + 1
+ 			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			sock.setblocking(False)
+			sock.connect_ex(server_addr[i]) # == 0 : # 0 for success
+			s_no = s_no + 1 # not everytime will connect
+			events = selectors.EVENT_READ | selectors.EVENT_WRITE
+			data = (server_addr[i])
+			self.sel.register(sock, events, data=data)
+		#conn, addr = sock.accept()  # Should be ready to read
+		#rospy.loginfo('accepted connection from : '+str( addr))
+		#conn.setblocking(False)
+		#data = [addr,conn]
+		#events = selectors.EVENT_READ | selectors.EVENT_WRITE
+		#self.sel.register(conn, events, data=data)
 
 	def service_connection(self,key, mask): # its client socket.
 		sock = key.fileobj
