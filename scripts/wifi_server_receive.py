@@ -138,6 +138,7 @@ class Wifi():
 		flag = 0
 		for i in range(len(self.d.signatures)):
 			self.d.signatures[i] =	eval(self.d.signatures[i])
+		rospy.loginfo('SERVER:start receive data'+str(self.d.signatures))
 
 		if self.d.purpose == self.TASK: # reply to working station
             		flag = 1

@@ -85,16 +85,16 @@ class Wifi():
 
 	def wifi_send(self,sock,data__):
 		data = copy.deepcopy(data__)
-		if len(data.signatures) > 1 :
+		if len(data.signatures) > 0 :
 			rospy.loginfo('>1 : '+str(len(data.signatures)))
 			for i in range(len(data.signatures)):
 				#rospy.loginfo('sign : '+str(data.signatures[i]))
 				#rospy.loginfo('sign : '+str(type(str(data.signatures[i]))))
 				data.signatures[i] = str(data.signatures[i])
-		else:
-			data.signatures = [str(data.signatures)]
+		#else:
+		#	data.signatures = [str(data.signatures)]
 
-		rospy.loginfo('start wifi send')
+		rospy.loginfo('start wifi send'+str(data.signatures))
 		# json.dumps(data)
 		j = json_message_converter.convert_ros_message_to_json(data)
 		j = j.encode('utf-8')
@@ -140,9 +140,9 @@ class Wifi():
 		return 0
 
 	def handle_wifi_send(self,req): # input of service is  header and wifiio output is error code and header
-
+		rospy.loginfo('start client')
+		rospy.loginfo(str(req.info.signatures))
 		send_no = self.sending_no
-[INFO] [1575931565.010762]: sending to connection('192.168.1.101', 12345)
 		# read input data
 		head = req.header
 		self.d = req.info
@@ -150,8 +150,11 @@ class Wifi():
 		# note that author decide by master only
 
 		# for clearing string tuple problem
-		for i in range(len(self.d.signatures)):
-                        self.d.signatures[i] =  eval(self.d.signatures[i])
+		if self.d.signatures[0] != "ALL":
+			while not isinstance(self.d.signatures[0],tuple):
+				self.d.signatures = self.d.signatures[0]
+			for i in range(len(self.d.signatures)):
+        	                self.d.signatures[i] =  eval(self.d.signatures[i])
 
 		if req.info.purpose == self.NODE_REPLY: # routenode details is renewed in master node 
 			self.d.purpose = 'A'
