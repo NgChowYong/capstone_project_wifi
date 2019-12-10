@@ -330,6 +330,7 @@ class WIFI_MASTER():
 		w.TASK_ID = str(self.ID)+str(self.cc)
 		w.node = self.current_node
 		w.author = self.ID
+		w.sender_state = self.current_state
 		s = send_wifi(w) # ask other cost
 
 	def update_web(self,ctrldata):# function provided by Meng
