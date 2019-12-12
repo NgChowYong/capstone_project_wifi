@@ -7,7 +7,7 @@ except ImportError:
 import rospy
 import socket
 import json
-from tircgo_msgs.msg import WifiIO
+from tircgo_msgs.msg import WifiIO,ControllerTalk
 from ros_wifi.srv import Ask_Data,Send_Task
 from std_msgs.msg import Header
 from rospy_message_converter import message_converter
@@ -76,6 +76,7 @@ class Wifi():
 		# initial node
 		rospy.init_node('wifi_server_receive', anonymous=True)
 		self.pub = rospy.Publisher('robot_wifi_io', WifiIO , queue_size=30) # node, msg, size
+		self.pub2 = rospy.Publisher('robot_wifi_controller_talk_inner', ControllerTalk , queue_size=10) # node, msg, size
 		rospy.loginfo("SERVER:ID:"+str(self.ID)+" port:"+str(self.port))
 
 		# wifi connection
@@ -102,6 +103,7 @@ class Wifi():
 		self.COST = 'C'
 		self.NODE = 'N'
 		self.NODE_REPLY = 'A'
+		self.JUST_TALK = 'J'
 		self.WEB = 'B'
 		self.sending_no = 1
 		self.previous_sender = self.ID
@@ -152,6 +154,10 @@ class Wifi():
 			flag = 0
 		elif self.d.purpose == self.OK: # reply node ok
 			flag = 0
+		elif self.d.purpose == self.JUST_TALK: # reply node ok
+			flag = 0
+			self.rossend2(self.d.c_talk)
+		        return flag,self.d
 
 		if self.d.purpose == self.WEB and WORKING_STATION == False : # recv WEB 
 	        	rospy.loginfo('SERVER:done receive data web')
@@ -214,6 +220,11 @@ class Wifi():
 	def rossend(self,data):
 		rospy.loginfo("SERVER:ros send data")
 		self.pub.publish(data)
+
+
+	def rossend2(self,data):
+		rospy.loginfo("SERVER:ros send data just talk")
+		self.pub2.publish(data)
 
 class DATA():
 	def __inti__(self):

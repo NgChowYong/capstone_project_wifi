@@ -9,7 +9,7 @@ import socket
 import types
 import json
 import copy
-from tircgo_msgs.msg import WifiIO,Cost,RouteNode
+from tircgo_msgs.msg import WifiIO,Cost,RouteNode,ControllerTalk
 from std_msgs.msg import Header,String
 from ros_wifi.srv import Send_Task,Send_TaskResponse
 from rospy_message_converter import json_message_converter
@@ -43,6 +43,7 @@ class Wifi():
         		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
 				break
+
         	self.host_list = tuple(self.host_list)
 		# data_init
 		self.d = DATA()
@@ -51,6 +52,8 @@ class Wifi():
 		# init node and provide service
 		rospy.init_node('wifi_client_send')
 		self.ser = rospy.Service('send_task', Send_Task, self.handle_wifi_send)  # could need to add another class reference to direct the pointer to the class 
+		rospy.Subscriber("robot_wifi_controller_talk_outer", ControllerTalk, self.just_talk)
+
 		rospy.loginfo("current host list : "+str(self.host_list))
 		# server_addr = (host, port)
 		self.server_addr = list(self.host_list)
@@ -81,6 +84,7 @@ class Wifi():
 		self.NODE = 'N'
 		self.WEB  = 'B'
 		self.NODE_REPLY = 'A'
+		self.JUST_TALK = 'J'
 		self.sending_no = 1
 
 	def wifi_send(self,sock,data__):
@@ -139,6 +143,22 @@ class Wifi():
 					return 1
 		return 0
 
+	def just_talk(self,data):
+		w = WifiIO()
+		w.author = self.ID
+		w.purpose = self.JUST_TALK
+		w.signatures = ['ALL']
+		w.c_talk = data
+		rospy.wait_for_service('send_task')
+		try:
+			rospy.loginfo('CLIENT: tell wifi send just talk')
+			send_tt = rospy.ServiceProxy('send_task',Send_Task)
+			head = Header(stamp=rospy.Time.now(), frame_id='base')
+			ret = send_tt(head,w)
+			rospy.loginfo('CLIENT: wifi sending done')
+		except rospy.ServiceException , e:
+			rospy.loginfo('CLIENT: service call just talk')
+
 	def handle_wifi_send(self,req): # input of service is  header and wifiio output is error code and header
 		rospy.loginfo('start client')
 		rospy.loginfo(str(req.info.signatures))
@@ -160,6 +180,7 @@ class Wifi():
 			self.d.purpose = 'A'
 			send_no = 1
 			self.d.signatures = req.info.author # send back to author
+
 		elif req.info.purpose == self.COST:
 			send_no = 1
 			self.d.purpose = 'C'
@@ -172,9 +193,19 @@ class Wifi():
 		elif req.info.purpose == self.NODE:
 			send_no = 1
 			pass
+
+		elif req.info.purpose == self.JUST_TALK:
+			send_no = 1
+			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
+				self.d.signatures = []
+				# for i in range(len(self.host_list)):
+				for i in range(send_no):
+					self.d.signatures.append(self.host_list[i])
+
 		elif req.info.purpose == self.OK:
 			send_no = 1
 			pass
+
 		elif req.info.purpose == self.TASK or  req.info.purpose == self.WEB :
 			#send_no = len(self.host_list)
 			send_no = send_no
@@ -183,6 +214,7 @@ class Wifi():
 				# for i in range(len(self.host_list)):
 				for i in range(send_no):
 					self.d.signatures.append(self.host_list[i])
+
 		self.server_addr = list(self.d.signatures)
 		# currently msg sending is one to one only not one to many for every message, except for task 
 		rospy.loginfo('client recv want to send data with purpose : '+str(req.info.purpose))
