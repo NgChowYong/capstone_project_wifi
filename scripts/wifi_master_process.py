@@ -314,7 +314,7 @@ class WIFI_MASTER():
 				self.lock_1 = self.UNLOCK
 
 			current = time.time()
-			if current - last > 0.1 : # in sec
+			if current - last > 1 : # in sec
 				last = current
 				try:
 					car = ros_serv_("N")
@@ -326,7 +326,12 @@ class WIFI_MASTER():
 				# got IDLE , HOMING , TEACHING , WORKING
 
 				if car.mode & 1 :
+					rospy.loginfo("MASTER: center is idle")
 					self.car_state = self.IDLE
+					if self.current_task != None :
+						self.current_task = None
+						rospy.loginfo("MASTER: closing current task")
+						pass
 					# checking for task and calculate cost and save and send
 					# check for exists of task database
 					if len(self.database) == 0:
@@ -336,12 +341,15 @@ class WIFI_MASTER():
 						self.start_ask_cost()
 
 				elif car.mode & 4 :
+					rospy.loginfo("MASTER: center is homing")
 					self.car_state = self.HOMING
 				elif car.mode & 8 :
 					self.car_state = self.TEACHING
+					rospy.loginfo("MASTER: center is teaching")
 					continue
 				elif car.mode & 16 :
 					self.car_state = self.WORKING
+					rospy.loginfo("MASTER: center is working")
 					# here start to keep asking node !!!
 					current_node = time.time()
 					if current_node - last_node > 1 : # in sec

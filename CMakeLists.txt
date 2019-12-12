@@ -54,6 +54,7 @@ add_message_files(
    RouteNode.msg
    Cost.msg
    WifiIO.msg
+   ControllerTalk.msg
 #   Message2.msg
 )
 

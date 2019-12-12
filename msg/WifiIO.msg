@@ -11,3 +11,5 @@ uint16 hop_count
 Cost cost
 RouteNode node
 CtrlData ctrldata
+
+ControllerTalk c_talk
