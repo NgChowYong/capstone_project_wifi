@@ -7,12 +7,12 @@ import rospy
 import threading
 import time
 from std_msgs.msg import Header
-from ros_wifi.msg import WifiIO,RouteNode
-from ros_wifi.srv import Ask_Data,Ask_DataResponse
+from tircgo_msgs.msg import WifiIO,RouteNode
+from tircgo_msgs.srv import Ask_Data,Ask_DataResponse
 from ros_wifi.srv import Send_Task,Send_TaskResponse
-from ros_wifi.srv import WifiNodeOcp,WifiNodeOcpResponse
-from ros_wifi.srv import WifiTaskConfirm,WifiTaskConfirmResponse
-from ros_wifi.srv import WifiNodeCost,WifiNodeCostResponse
+from tircgo_msgs.srv import WifiNodeOcp,WifiNodeOcpResponse
+from tircgo_msgs.srv import WifiTaskConfirm,WifiTaskConfirmResponse
+from tircgo_msgs.srv import WifiNodeCost,WifiNodeCostResponse
 from flask import Flask,request,render_template
 
 if rospy.has_param('Working_Station'):

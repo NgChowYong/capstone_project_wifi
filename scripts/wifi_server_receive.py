@@ -7,7 +7,7 @@ except ImportError:
 import rospy
 import socket
 import json
-from ros_wifi.msg import WifiIO
+from tircgo_msgs.msg import WifiIO
 from ros_wifi.srv import Ask_Data,Send_Task
 from std_msgs.msg import Header
 from rospy_message_converter import message_converter

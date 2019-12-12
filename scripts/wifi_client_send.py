@@ -9,7 +9,7 @@ import socket
 import types
 import json
 import copy
-from ros_wifi.msg import WifiIO,Cost,RouteNode
+from tircgo_msgs.msg import WifiIO,Cost,RouteNode
 from std_msgs.msg import Header,String
 from ros_wifi.srv import Send_Task,Send_TaskResponse
 from rospy_message_converter import json_message_converter

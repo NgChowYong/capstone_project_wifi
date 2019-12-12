@@ -1,5 +1,5 @@
 Header header
-WifiIO info
+tircgo_msgs/WifiIO info
 ---
 Header header
 string error_code

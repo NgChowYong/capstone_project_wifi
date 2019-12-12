@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   geometry_msgs
+  tircgo_msgs
 )
 #  rospy_message_converter-master
 ## System dependencies are found with CMake's conventions
@@ -48,23 +49,23 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-   FILES
-   CtrlData.msg
-   RouteNode.msg
-   Cost.msg
-   WifiIO.msg
+#add_message_files(
+#   FILES
+#   CtrlData.msg
+#   RouteNode.msg
+#   Cost.msg
+#   WifiIO.msg
 #   Message2.msg
-)
+#)
 
 ## Generate services in the 'srv' folder
 add_service_files(
  FILES
  Send_Task.srv
- Ask_Data.srv
- WifiNodeOcp.srv
- WifiNodeCost.srv
- WifiTaskConfirm.srv
+# Ask_Data.srv
+# WifiNodeOcp.srv
+# WifiNodeCost.srv
+# WifiTaskConfirm.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -79,6 +80,7 @@ generate_messages(
    DEPENDENCIES
    std_msgs
    geometry_msgs
+   tircgo_msgs
 )
 
 ################################################
