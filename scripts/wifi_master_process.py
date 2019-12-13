@@ -154,10 +154,12 @@ class WIFI_MASTER():
 		# some state from vehicle
 		self.current_node = RouteNode()
 		self.current_state = self.IDLE # got IDLE , COST_ING , COST_DONE , WORKING
+		self.current_state_flag = 0
 		self.car_state = self.IDLE # got IDLE , HOMING , TEACHING , WORKING
 		self.node_data = NODE_DATA(self.host_list)
 		self.current_task = None
 		self.task_tag = 0
+
 		# database
 		self.database = []
 
@@ -239,6 +241,7 @@ class WIFI_MASTER():
 									if s.is_taken: # check if want to take
 										self.current_state = self.WORKING
 										self.current_task = data.TASK_ID
+										self.current_state_flag = 1
 									else:
 										self.current_state = self.IDLE
 								else: # receive the last but not me
@@ -307,6 +310,7 @@ class WIFI_MASTER():
 	def update_job(self):
 		rospy.loginfo('MASTER:start background process data')
 		last = time.time()
+		last2 = time.time()
 		last_node = time.time()
 		while(1):
 			# reading all input and update to database with period as below
@@ -314,12 +318,16 @@ class WIFI_MASTER():
 				self.lock_1 = self.UNLOCK
 
 			current = time.time()
-			if current - last > 1 : # in sec
+			if current - last > 0.49 : # in sec
 				last = current
 				try:
 					car = ros_serv_("N")
 				except:
 					rospy.loginfo('MASTER:closed ros_serv')
+
+				if current - last2 > 2:
+					last2 = current
+					self.send_update_web(car)
 
 				self.current_node = car.nd_ocp
 				# check for input and do process to state
@@ -328,7 +336,8 @@ class WIFI_MASTER():
 				if car.mode & 1 :
 					rospy.loginfo("MASTER: center is idle")
 					self.car_state = self.IDLE
-					if self.current_task != None :
+					if self.current_task != None and self.current_state_flag == 1:
+						self.current_state_flag = 0
 						self.current_task = None
 						rospy.loginfo("MASTER: closing current task")
 						pass
@@ -393,8 +402,20 @@ class WIFI_MASTER():
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
 
-	def update_web(self,ctrldata):# function provided by Meng
-		return 1
+	def update_web(self,ctrldata): # collect data and update web
+		rospy.loginfo('MASTER: update web here')
+		pass
+
+	def send_update_web(self,ctrldata): # send data to web
+		rospy.loginfo('MASTER: send update web')
+		w = WifiIO()
+		w.purpose=self.WEB
+		w.signatures = ["ALL"]
+		w.node = self.current_node
+		w.author = self.ID
+		w.ctrldata = ctrldata
+		s = send_wifi(w) # ask other cost
+
 	##############################################################################
 
 	def sent_all_node(self):

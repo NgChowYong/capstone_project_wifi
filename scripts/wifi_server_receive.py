@@ -159,9 +159,12 @@ class Wifi():
 			self.rossend2(self.d.c_talk)
 		        return flag,self.d
 
-		if self.d.purpose == self.WEB and WORKING_STATION == False : # recv WEB 
-	        	rospy.loginfo('SERVER:done receive data web')
-	        	return flag,self.d
+		if self.d.purpose == self.WEB :
+			if WORKING_STATION == False : # recv WEB 
+	        		rospy.loginfo('SERVER:done receive data web no need to pass to master')
+	        		return flag,self.d
+			else:
+				flag = 0
 
 		# means i truely receive this message so i sign
 		for i in self.d.signatures:
