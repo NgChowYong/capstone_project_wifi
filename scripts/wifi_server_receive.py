@@ -7,11 +7,12 @@ except ImportError:
 import rospy
 import socket
 import json
-from tircgo_msgs.msg import WifiIO,ControllerTalk
-from ros_wifi.srv import Ask_Data,Send_Task
+from tircgo_msgs.msg import WifiIO
+from tircgo_msgs.srv import Ask_Data,Send_Task
 from std_msgs.msg import Header
 from rospy_message_converter import message_converter
 from rospy_message_converter import json_message_converter
+from tircgo_msgs.msg import ControllerTalk
 
 if rospy.has_param('Working_Station'):
 	WORKING_STATION = rospy.get_param('Working_Station')
@@ -48,6 +49,10 @@ def send_wifi(dt):  # call for service
 
 class Wifi():
 	def __init__(self):
+		rospy.init_node('wifi_server_receive', anonymous=True)
+		self.pub = rospy.Publisher('robot_wifi_io', WifiIO , queue_size=30) # node, msg, size
+		self.pub2 = rospy.Publisher('robot_wifi_controller_talk_inner', ControllerTalk , queue_size=10) # node, msg, size
+
 		# self ID = ID , port number
 		if rospy.has_param('IP_address'):
 			self.ID = rospy.get_param('IP_address')
@@ -60,13 +65,20 @@ class Wifi():
 		self.hop_count= 5
 
 	        # list of other car
-		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
-	        for i in range(len(self.host_list)):
+                if rospy.has_param('host_list'):
+                        h_list = rospy.get_param('host_list')
+                        h_list = h_list.split(',')
+                        self.host_list = []
+                        for i in range(len(h_list)/2):
+                                self.host_list.append((h_list[i*2],int(h_list[i*2+1])))
+
+                else:
+                        self.host_list       = [("192.168.1.101", 12346),("192.168.1.101",12345),("192.168.1.102",12345)]
+		for i in range(len(self.host_list)):
         		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
 				break
         	self.host_list = tuple(self.host_list)
-
 		self.length_h_l = len(self.host_list)
 
 		# data_init
@@ -74,9 +86,6 @@ class Wifi():
 		self.parameter()
 
 		# initial node
-		rospy.init_node('wifi_server_receive', anonymous=True)
-		self.pub = rospy.Publisher('robot_wifi_io', WifiIO , queue_size=30) # node, msg, size
-		self.pub2 = rospy.Publisher('robot_wifi_controller_talk_inner', ControllerTalk , queue_size=10) # node, msg, size
 		rospy.loginfo("SERVER:ID:"+str(self.ID)+" port:"+str(self.port))
 
 		# wifi connection
@@ -136,7 +145,9 @@ class Wifi():
 
 	def receive_data(self,data_rc):
 		rospy.loginfo('SERVER:start receive data')
-		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', data_rc.decode('utf-8'))
+		##################################################################
+		self.d = json_message_converter.convert_json_to_ros_message('tircgo_msgs/WifiIO', data_rc.decode('utf-8'))
+		##################################################################
 		flag = 0
 		for i in range(len(self.d.signatures)):
 			self.d.signatures[i] =	eval(self.d.signatures[i])
@@ -159,9 +170,12 @@ class Wifi():
 			self.rossend2(self.d.c_talk)
 		        return flag,self.d
 
-		if self.d.purpose == self.WEB and WORKING_STATION == False : # recv WEB 
-	        	rospy.loginfo('SERVER:done receive data web')
-	        	return flag,self.d
+		if self.d.purpose == self.WEB :
+			if WORKING_STATION == False : # recv WEB 
+	        		rospy.loginfo('SERVER:done receive data web no need to pass to master')
+	        		return flag,self.d
+			else:
+				flag = 0
 
 		# means i truely receive this message so i sign
 		for i in self.d.signatures:
@@ -203,9 +217,17 @@ class Wifi():
 		rospy.loginfo("SERVER:start reply node req ")
 		rospy.loginfo("SERVER:ask for node ")
 		if WORKING_STATION :
+	                if rospy.has_param('station_node'):
+	                        r_n = rospy.get_param('station_node')
+	                        r_n = r_n.split(',')
+	                        route_ = int(r_n[0])
+	                        node_  = int(r_n[1])
+	                else:
+	                        route_ = 0
+	                        node_  = 0
 			b = Ask_Data() # ask data reply
-			b.np_ocp.route = -1
-			b.np_ocp.node = -1
+			b.np_ocp.route = route_
+			b.np_ocp.node = node_
 			b.np_ocp.pos.x = -1
 			b.np_ocp.pos.y = -1
 			b.np_ocp.pos.z = -1
@@ -221,10 +243,10 @@ class Wifi():
 		rospy.loginfo("SERVER:ros send data")
 		self.pub.publish(data)
 
-
 	def rossend2(self,data):
 		rospy.loginfo("SERVER:ros send data just talk")
 		self.pub2.publish(data)
+
 
 class DATA():
 	def __inti__(self):
