@@ -15,15 +15,16 @@ from ros_wifi.srv import WifiTaskConfirm,WifiTaskConfirmResponse
 from ros_wifi.srv import WifiNodeCost,WifiNodeCostResponse
 from flask import Flask,request,render_template
 
+
 if rospy.has_param('Working_Station'):
 	WORKING_STATION = rospy.get_param('Working_Station')
 else:
 	WORKING_STATION = False
+
 # for share data of web app and code
 counter = 0
 
 # WORKING_STATION = True # True or False
-
 
 def ros_serv_(p):  # call for service # input is string
 	rospy.wait_for_service('robot_wifi_askdata_inner') # wait until service available # service name
@@ -43,7 +44,7 @@ def ask_cost(rn):  # call for service # input is string
 	rospy.wait_for_service('robot_wifi_nodecost_inner') # wait until service available
 	try:
 		rospy.loginfo('MASTER:ask central for cost')
-		ask_cost = rospy.ServiceProxy('robot_wifi_nodecost_inner', WifiNodeCost) 
+		ask_cost = rospy.ServiceProxy('robot_wifi_nodecost_inner', WifiNodeCost)
 		s = ask_cost(rn)
 		rospy.loginfo('MASTER:ask central for cost done')
 		return s
@@ -55,7 +56,7 @@ def Task_confirm(cs):  # call for service # input is cost
 	rospy.wait_for_service('robot_wifi_taskconfirm_inner') # wait until service available
 	try:
 		rospy.loginfo('MASTER:ask central for wifi confirm')
-		task_c = rospy.ServiceProxy('robot_wifi_taskconfirm_inner', WifiTaskConfirm) 
+		task_c = rospy.ServiceProxy('robot_wifi_taskconfirm_inner', WifiTaskConfirm)
 		s = task_c(cs)
 		rospy.loginfo('MASTER:ask central for wifi confirm done')
 		return s
@@ -82,11 +83,7 @@ class WIFI_MASTER():
 
 		#create node and service for shengming use
 		rospy.init_node('wifi_master', anonymous=True)
-		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service 
-
-		###
-		starting = rospy.Service('starting_task',Send_Task,self.start_task)
-		###
+		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service
 
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
 		rospy.loginfo("MASTER:working : "+str(WORKING_STATION))
@@ -98,11 +95,6 @@ class WIFI_MASTER():
 		# for closing thread and node
 		rospy.spin()
 		self.shut = 1
-
-	def start_task(self,rep):
-		self.button_press = 1
-		rsp = Send_TaskResponse()
-		return rsp
 
 	def parameter_setup(self):
 		# for shuttingdown node and thread
@@ -142,7 +134,15 @@ class WIFI_MASTER():
 		self.lock_once = 0
 
 		# list of other car
-		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
+	        if rospy.has_param('host_list'):
+			h_list = rospy.get_param('host_list')
+			h_list = h_list.split(',')
+			self.host_list = []
+			for i in range(len(h_list)/2):
+				self.host_list.append((h_list[i*2],int(h_list[i*2+1])))
+
+		else:
+			self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
 	        for i in range(len(self.host_list)):
             		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
@@ -394,11 +394,25 @@ class WIFI_MASTER():
 			return True
 
 	def announce_new_task(self):# sending task , task node , author
+
+	        if rospy.has_param('station_node'):
+			r_n = rospy.get_param('station_node')
+			r_n = r_n.split(',')
+			route_ = int(r_n[0])
+			node_  = int(r_n[1])
+		else:
+			route_ = 0
+			node_  = 0
+
+		self.current_node.route = route_
+		self.current_node.node = node_
+
 		w = WifiIO()
 		w.purpose=self.TASK
 		w.signatures = ["ALL"]
 		w.TASK_ID = str(self.ID)+str(self.cc)
-		w.node = self.current_node
+		w.node = route_
+		w.node = node_
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
 

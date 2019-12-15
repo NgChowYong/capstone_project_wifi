@@ -24,6 +24,10 @@ else:
 
 class Wifi():
 	def __init__(self):
+		rospy.init_node('wifi_client_send')
+		rospy.Subscriber("robot_wifi_controller_talk_outer", ControllerTalk, self.just_talk)
+		self.ser = rospy.Service('send_task', Send_Task, self.handle_wifi_send)  # could need to add another class reference to direct the pointer to the class 
+
 		if rospy.has_param('IP_address'):
 			self.ID = rospy.get_param('IP_address')
 		else:
@@ -36,10 +40,16 @@ class Wifi():
 
 		self.hop_count= 5
 
-		# host_list = ID , port number
-		#self.host_list(('127.0.0.1',12345),('127.0.0.1',12346))
-		# current use 1 case first
-		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
+
+		if rospy.has_param('host_list'):
+                        h_list = rospy.get_param('host_list')
+                        h_list = h_list.split(',')
+                        self.host_list = []
+                        for i in range(len(h_list)/2):
+                                self.host_list.append((h_list[i*2],int(h_list[i*2+1])))
+
+                else:
+                        self.host_list       = [("192.168.1.101", 12346),("192.168.1.101",12345),("192.168.1.102",12345)]$
 	        for i in range(len(self.host_list)):
         		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
@@ -51,9 +61,6 @@ class Wifi():
 		self.parameter()
 
 		# init node and provide service
-		rospy.init_node('wifi_client_send')
-		rospy.Subscriber("robot_wifi_controller_talk_outer", ControllerTalk, self.just_talk)
-		self.ser = rospy.Service('send_task', Send_Task, self.handle_wifi_send)  # could need to add another class reference to direct the pointer to the class 
 		rospy.loginfo("current host list : "+str(self.host_list))
 		# server_addr = (host, port)
 		self.server_addr = list(self.host_list)

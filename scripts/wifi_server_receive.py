@@ -49,6 +49,10 @@ def send_wifi(dt):  # call for service
 
 class Wifi():
 	def __init__(self):
+		rospy.init_node('wifi_server_receive', anonymous=True)
+		self.pub = rospy.Publisher('robot_wifi_io', WifiIO , queue_size=30) # node, msg, size
+		self.pub2 = rospy.Publisher('robot_wifi_controller_talk_inner', ControllerTalk , queue_size=10) # node, msg, size
+
 		# self ID = ID , port number
 		if rospy.has_param('IP_address'):
 			self.ID = rospy.get_param('IP_address')
@@ -61,8 +65,16 @@ class Wifi():
 		self.hop_count= 5
 
 	        # list of other car
-		self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
-	        for i in range(len(self.host_list)):
+                if rospy.has_param('host_list'):
+                        h_list = rospy.get_param('host_list')
+                        h_list = h_list.split(',')
+                        self.host_list = []
+                        for i in range(len(h_list)/2):
+                                self.host_list.append((h_list[i*2],int(h_list[i*2+1])))
+
+                else:
+                        self.host_list       = [("192.168.1.101", 12346),("192.168.1.101",12345),("192.168.1.102",12345)]
+		for i in range(len(self.host_list)):
         		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
 				break
@@ -74,9 +86,6 @@ class Wifi():
 		self.parameter()
 
 		# initial node
-		rospy.init_node('wifi_server_receive', anonymous=True)
-		self.pub = rospy.Publisher('robot_wifi_io', WifiIO , queue_size=30) # node, msg, size
-		self.pub2 = rospy.Publisher('robot_wifi_controller_talk_inner', ControllerTalk , queue_size=10) # node, msg, size
 		rospy.loginfo("SERVER:ID:"+str(self.ID)+" port:"+str(self.port))
 
 		# wifi connection
@@ -206,9 +215,17 @@ class Wifi():
 		rospy.loginfo("SERVER:start reply node req ")
 		rospy.loginfo("SERVER:ask for node ")
 		if WORKING_STATION :
+	                if rospy.has_param('station_node'):
+	                        r_n = rospy.get_param('station_node')
+	                        r_n = r_n.split(',')
+	                        route_ = int(r_n[0])
+	                        node_  = int(r_n[1])
+	                else:
+	                        route_ = 0
+	                        node_  = 0
 			b = Ask_Data() # ask data reply
-			b.np_ocp.route = -1
-			b.np_ocp.node = -1
+			b.np_ocp.route = route_
+			b.np_ocp.node = node_
 			b.np_ocp.pos.x = -1
 			b.np_ocp.pos.y = -1
 			b.np_ocp.pos.z = -1

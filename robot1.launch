@@ -4,6 +4,7 @@
     <param name="Working_Station" value="0" type="int"/>
     <param name="IP_address" value="192.168.1.101" type="str"/>
     <param name="port" value="12345" type="int"/>
+    <param name="host_list" value="192.168.1.102,12345,192.168.1.101,12345,192.168.1.101,123456" type="str"/>
     <node name="node_ask_cost" pkg="ros_wifi" type="service_ask_cost.py" />
     <node name="node_ask_node" pkg="ros_wifi" type="service_ask_node.py" />
     <node name="node_ask_data" pkg="ros_wifi" type="service_ask_data.py"/>
