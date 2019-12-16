@@ -229,7 +229,7 @@ class WIFI_MASTER():
 			#rospy.loginfo('MASTER: cost: '+str(data.cost))
 			if data.sender_state == self.IDLE: # sender is normal ppl
 				rospy.loginfo('MASTER:sender is idle')
-				if len(self.database) > 0 or self.current_task != None : # i got some task working
+				if len(self.database) > 0 or self.current_task != None or not WORKING_STATION: # i got some task working or working state
 					rospy.loginfo('MASTER: IM GOT SOME TASK')
 					flag_task = 0
 					if len(self.database)>0:
