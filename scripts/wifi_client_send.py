@@ -50,6 +50,9 @@ class Wifi():
 
                 else:
                         self.host_list       = [("192.168.1.101", 12346),("192.168.1.101",12345),("192.168.1.102",12345)]
+
+		rospy.loginfo("CLIENT: "+str(self.ID)+' '+str(self.port))
+
 	        for i in range(len(self.host_list)):
         		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
@@ -61,7 +64,7 @@ class Wifi():
 		self.parameter()
 
 		# init node and provide service
-		rospy.loginfo("current host list : "+str(self.host_list))
+		rospy.loginfo("CLIENT: current host list : "+str(self.host_list))
 		# server_addr = (host, port)
 		self.server_addr = list(self.host_list)
 		self.s_no = 0
