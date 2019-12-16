@@ -27,7 +27,13 @@ counter = 0
 # WORKING_STATION = True # True or False
 
 def ros_serv_(p):  # call for service # input is string
-	rospy.wait_for_service('robot_wifi_askdata_inner') # wait until service available # service name
+	while(1):
+                try:
+                        rospy.wait_for_service('robot_wifi_askdata_inner',timeout=1) # wait until service availabl$
+                        break
+                except:
+                        rospy.loginfo("Service call failed: ask data")
+
 	try:
 		# rospy.loginfo('ask central for data')
 		ask_data = rospy.ServiceProxy('robot_wifi_askdata_inner', Ask_Data) # handler; name, service name the --- one
@@ -41,7 +47,12 @@ def ros_serv_(p):  # call for service # input is string
 
 
 def ask_cost(rn):  # call for service # input is string
-	rospy.wait_for_service('robot_wifi_nodecost_inner') # wait until service available
+	while(1):
+                try:
+                        rospy.wait_for_service('robot_wifi_nodecost_inner',timeout=1) # wait until service availabl$
+                        break
+                except:
+                        rospy.loginfo("Service call failed: ask cost")
 	try:
 		rospy.loginfo('MASTER:ask central for cost')
 		ask_cost = rospy.ServiceProxy('robot_wifi_nodecost_inner', WifiNodeCost)
@@ -53,7 +64,13 @@ def ask_cost(rn):  # call for service # input is string
 
 
 def Task_confirm(cs):  # call for service # input is cost
-	rospy.wait_for_service('robot_wifi_taskconfirm_inner') # wait until service available
+        while(1):
+                try:
+                        rospy.wait_for_service('robot_wifi_taskconfirm_inner',timeout=1) # wait until service avai$
+                        break
+                except:
+                        rospy.loginfo("Service call failed: task confirm")
+
 	try:
 		rospy.loginfo('MASTER:ask central for wifi confirm')
 		task_c = rospy.ServiceProxy('robot_wifi_taskconfirm_inner', WifiTaskConfirm)
@@ -78,11 +95,12 @@ def send_wifi(data):
 
 class WIFI_MASTER():
 	def __init__(self):
+		#create node and service for shengming use
+		rospy.init_node('wifi_master', anonymous=True)
+
 		#setting up parameter
 		self.parameter_setup()
 
-		#create node and service for shengming use
-		rospy.init_node('wifi_master', anonymous=True)
 		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service
 
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
@@ -213,7 +231,7 @@ class WIFI_MASTER():
 			#rospy.loginfo('MASTER: cost: '+str(data.cost))
 			if data.sender_state == self.IDLE: # sender is normal ppl
 				rospy.loginfo('MASTER:sender is idle')
-				if len(self.database) > 0 or self.current_task != None : # i got some task working
+				if len(self.database) > 0 or self.current_task != None or not WORKING_STATION: # i got some task working
 					rospy.loginfo('MASTER: IM GOT SOME TASK')
 					flag_task = 0
 					if len(self.database)>0:
@@ -316,55 +334,55 @@ class WIFI_MASTER():
 			# reading all input and update to database with period as below
 			if self.lock_1 == self.LOCK:
 				self.lock_1 = self.UNLOCK
+                        if not WORKING_STATION :
+				current = time.time()
+				if current - last > 0.49 : # in sec
+					last = current
+					try:
+						car = ros_serv_("N")
+					except:
+						rospy.loginfo('MASTER:closed ros_serv')
 
-			current = time.time()
-			if current - last > 0.49 : # in sec
-				last = current
-				try:
-					car = ros_serv_("N")
-				except:
-					rospy.loginfo('MASTER:closed ros_serv')
+					if current - last2 > 2:
+						last2 = current
+						self.send_update_web(car)
 
-				if current - last2 > 2:
-					last2 = current
-					self.send_update_web(car)
+					self.current_node = car.nd_ocp
+					# check for input and do process to state
+					# got IDLE , HOMING , TEACHING , WORKING
 
-				self.current_node = car.nd_ocp
-				# check for input and do process to state
-				# got IDLE , HOMING , TEACHING , WORKING
+					if car.mode & 1 :
+						rospy.loginfo("MASTER: center is idle")
+						self.car_state = self.IDLE
+						if self.current_task != None and self.current_state_flag == 1:
+							self.current_state_flag = 0
+							self.current_task = None
+							rospy.loginfo("MASTER: closing current task")
+							pass
+						# checking for task and calculate cost and save and send
+						# check for exists of task database
+						if len(self.database) == 0:
+							pass
+						else:
+							rospy.loginfo('MASTER:processing task')
+							self.start_ask_cost()
 
-				if car.mode & 1 :
-					rospy.loginfo("MASTER: center is idle")
-					self.car_state = self.IDLE
-					if self.current_task != None and self.current_state_flag == 1:
-						self.current_state_flag = 0
-						self.current_task = None
-						rospy.loginfo("MASTER: closing current task")
-						pass
-					# checking for task and calculate cost and save and send
-					# check for exists of task database
-					if len(self.database) == 0:
-						pass
-					else:
-						rospy.loginfo('MASTER:processing task')
-						self.start_ask_cost()
-
-				elif car.mode & 4 :
-					rospy.loginfo("MASTER: center is homing")
-					self.car_state = self.HOMING
-				elif car.mode & 8 :
-					self.car_state = self.TEACHING
-					rospy.loginfo("MASTER: center is teaching")
-					continue
-				elif car.mode & 16 :
-					self.car_state = self.WORKING
-					rospy.loginfo("MASTER: center is working")
-					# here start to keep asking node !!!
-					current_node = time.time()
-					if current_node - last_node > 1 : # in sec
-						last_node = current_node
-						self.send_all_node()
-					self.task_tag = 1
+					elif car.mode & 4 :
+						rospy.loginfo("MASTER: center is homing")
+						self.car_state = self.HOMING
+					elif car.mode & 8 :
+						self.car_state = self.TEACHING
+						rospy.loginfo("MASTER: center is teaching")
+						continue
+					elif car.mode & 16 :
+						self.car_state = self.WORKING
+						rospy.loginfo("MASTER: center is working")
+						# here start to keep asking node !!!
+						current_node = time.time()
+						if current_node - last_node > 1 : # in sec
+							last_node = current_node
+							self.send_all_node()
+						self.task_tag = 1
 
 			if self.shut == 1: # for closing this thread
 				break

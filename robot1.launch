@@ -1,10 +1,7 @@
 <launch>
+  <rosparam command="load" file="parameter_.yaml" />
 
-  <group ns="robot1">
-    <param name="Working_Station" value="0" type="int"/>
-    <param name="IP_address" value="192.168.1.101" type="str"/>
-    <param name="port" value="12345" type="int"/>
-    <param name="host_list" value="192.168.1.102,12345,192.168.1.101,12345,192.168.1.101,123456" type="str"/>
+  <!--group ns="robot1"-->
     <node name="node_ask_cost" pkg="ros_wifi" type="service_ask_cost.py" />
     <node name="node_ask_node" pkg="ros_wifi" type="service_ask_node.py" />
     <node name="node_ask_data" pkg="ros_wifi" type="service_ask_data.py"/>
@@ -12,7 +9,7 @@
     <node name="node_client" pkg="ros_wifi" type="wifi_client_send.py" output="screen"/>
     <node name="node_master" pkg="ros_wifi" type="wifi_master_process.py" output="screen"/>
     <node name="node_server" pkg="ros_wifi" type="wifi_server_receive.py" output="screen"/>
-  </group>
+  <!--/group-->
   
 </launch>
 <!--
