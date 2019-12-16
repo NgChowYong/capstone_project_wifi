@@ -7,7 +7,7 @@ import rospy
 import threading
 import time
 from std_msgs.msg import Header
-from tircgo_msgs.msg import WifiIO,RouteNode
+from tircgo_msgs.msg import WifiIO,RouteNode,CtrlData
 from tircgo_msgs.srv import Ask_Data,Ask_DataResponse
 from ros_wifi.srv import Send_Task,Send_TaskResponse
 from tircgo_msgs.srv import WifiNodeOcp,WifiNodeOcpResponse
@@ -29,10 +29,12 @@ counter = 0
 def ros_serv_(p):  # call for service # input is string
 	while(1):
 		try:
-			rospy.wait_for_service('robot_wifi_askdata_inner',timeout=1) # wait until service available # service name
+			rospy.wait_for_service('robot_wifi_askdata_inner',timeout=3) # wait until service available # service name
 			break
 		except:
 			rospy.loginfo("Service call failed: ask data")
+			if self.shut == 1: # for closing this thread
+				break
 
 	try:
 		# rospy.loginfo('ask central for data')
@@ -52,6 +54,8 @@ def ask_cost(rn):  # call for service # input is string
 			rospy.wait_for_service('robot_wifi_nodecost_inner',timeout=1) # wait until service available # service name
 			break
 		except:
+			if self.shut == 1: # for closing this thread
+				break
 			rospy.loginfo("Service call failed: ask cost")
 	try:
 		rospy.loginfo('MASTER:ask central for cost')
@@ -69,6 +73,8 @@ def Task_confirm(cs):  # call for service # input is cost
 			rospy.wait_for_service('robot_wifi_taskconfirm_inner',timeout=1) # wait until service available # service name
 			break
 		except:
+			if self.shut == 1: # for closing this thread
+				break
 			rospy.loginfo("Service call failed: task confirm")
 	try:
 		rospy.loginfo('MASTER:ask central for wifi confirm')
@@ -94,12 +100,12 @@ def send_wifi(data):
 
 class WIFI_MASTER():
 	def __init__(self):
-		#setting up parameter
-		self.parameter_setup()
-
 		#create node and service for shengming use
 		rospy.init_node('wifi_master', anonymous=True)
 		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service
+
+		#setting up parameter
+		self.parameter_setup()
 
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
 		rospy.loginfo("MASTER:working : "+str(WORKING_STATION))
@@ -340,8 +346,9 @@ class WIFI_MASTER():
 						car = ros_serv_("N")
 					except:
 						rospy.loginfo('MASTER:closed ros_serv')
+						car = CtrlData()
 
-					if current - last2 > 2:
+					if current - last2 > 15:
 						last2 = current
 						self.send_update_web(car)
 
