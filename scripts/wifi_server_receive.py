@@ -22,7 +22,12 @@ else:
 # WORKING_STATION = True # True or False
 
 def ros_serv_(p):  # call for service # input is string
-	rospy.wait_for_service('robot_wifi_askdata_inner') # wait until service available # service name
+        while(1):
+                try:
+                        rospy.wait_for_service('robot_wifi_askdata_inner',timeout=1) # wait until service available # service name
+                        break
+                except:
+                        rospy.loginfo("Service call failed: task confirm")
 	try:
 		rospy.loginfo('SERVER:ask central for data')
 		ask_data = rospy.ServiceProxy('robot_wifi_askdata_inner', Ask_Data) # handler; name, service name the --- one
