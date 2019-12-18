@@ -385,7 +385,17 @@ class WIFI_MASTER():
 							pass
 						else:
 							rospy.loginfo('MASTER:processing task')
-							self.start_ask_cost()
+							if self.length_h_l == 2:
+								rospy.loginfo('MASTER: IM GOING to do the job')
+								# here do task confirmation
+								s = Task_confirm(data.cost)
+								self.current_state = self.COSTDONE
+								if s.is_taken: # check if want to take
+									self.current_state = self.WORKING
+									self.current_task = data.TASK_ID
+									self.current_state_flag = 1
+							else:
+								self.start_ask_cost()
 
 					elif car.mode & 4 :
 						rospy.loginfo("MASTER: center is homing")
