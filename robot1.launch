@@ -1,6 +1,5 @@
 <launch>
-  <rosparam command="load" file="parameter_.yaml" />
-
+  <rosparam command="load" file="$(find ros_wifi)/parameter_.yaml" />
   <!--group ns="robot1"-->
     <!--node name="node_ask_cost" pkg="ros_wifi" type="service_ask_cost.py" /-->
     <!--node name="node_ask_node" pkg="ros_wifi" type="service_ask_node.py" /-->

@@ -375,16 +375,11 @@ class WIFI_MASTER():
 			# reading all input and update to database with period as below
 			if self.lock_1 == self.LOCK:
 				self.lock_1 = self.UNLOCK
-			
+
 			if not WORKING_STATION :
 				current = time.time()
 				if current - last > 1 : # in sec
 					last = current
-
-					# update website
-					if current - last2 > 10:
-						last2 = current
-						self.send_update_web(car)
 
 					# get car data
 					try:
@@ -455,6 +450,11 @@ class WIFI_MASTER():
 								last_node = current_node
 								self.send_all_node()
 							self.task_tag = 1
+						# update website
+						current_node = time.time()
+						if current - last2 > 10:
+							last2 = current
+							self.send_update_web(car)
 
 					except:
 						rospy.loginfo('MASTER: not connected ros_serv or error')
@@ -478,7 +478,7 @@ class WIFI_MASTER():
 			return False
 		else:
 			self.cc = counter
-
+		global reset_flag
 		if reset_flag == 1:
 			reset_flag = 0
 			self.button_press = 0
