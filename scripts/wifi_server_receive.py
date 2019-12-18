@@ -150,14 +150,20 @@ class Wifi():
 					flag = 0
 
 	def receive_data(self,data_rc):
-		rospy.loginfo('SERVER:start receive data')
+		rospy.loginfo('SERVER: start receive data')
+
 		##################################################################
-		self.d = json_message_converter.convert_json_to_ros_message('tircgo_msgs/WifiIO', data_rc.decode('utf-8'))
+		try:
+			self.d = json_message_converter.convert_json_to_ros_message('tircgo_msgs/WifiIO', data_rc.decode('utf-8'))
+		except:
+			rospy.loginfo('SERVER: recv error')
+			return 0, WifiIO()
 		##################################################################
+
 		flag = 0
 		for i in range(len(self.d.signatures)):
 			self.d.signatures[i] =	eval(self.d.signatures[i])
-		rospy.loginfo('SERVER:start receive data'+str(self.d.signatures))
+		rospy.loginfo('SERVER: start receive data'+str(self.d.signatures))
 
 		if self.d.purpose == self.TASK: # reply to working station
             		flag = 1

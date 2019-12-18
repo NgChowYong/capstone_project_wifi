@@ -94,12 +94,12 @@ def send_wifi(data):
 
 class WIFI_MASTER():
 	def __init__(self):
+		rospy.init_node('wifi_master', anonymous=True)
+		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service
 		#setting up parameter
 		self.parameter_setup()
 
 		#create node and service for shengming use
-		rospy.init_node('wifi_master', anonymous=True)
-		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service
 
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
 		rospy.loginfo("MASTER:working : "+str(WORKING_STATION))
@@ -159,6 +159,7 @@ class WIFI_MASTER():
 
 		else:
 			self.host_list       = [("192.168.1.101", 12346),("192.168.1.101", 12345),("192.168.1.102", 12345)]
+
 	        for i in range(len(self.host_list)):
             		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
                 		self.host_list.remove((self.ID ,self.port ))
@@ -167,8 +168,19 @@ class WIFI_MASTER():
 
 		self.length_h_l = len(self.host_list)
 
+	        if rospy.has_param('station_node'):
+			r_n = rospy.get_param('station_node')
+			r_n = r_n.split(',')
+			route_ = int(r_n[0])
+			node_  = int(r_n[1])
+		else:
+			route_ = 0
+			node_  = 0
 		# some state from vehicle
 		self.current_node = RouteNode()
+		self.current_node.route = route_
+		self.current_node.node = node_
+
 		self.current_state = self.IDLE # got IDLE , COST_ING , COST_DONE , WORKING
 		self.current_state_flag = 0
 		self.car_state = self.IDLE # got IDLE , HOMING , TEACHING , WORKING
@@ -410,25 +422,13 @@ class WIFI_MASTER():
 			return True
 
 	def announce_new_task(self):# sending task , task node , author
-
-	        if rospy.has_param('station_node'):
-			r_n = rospy.get_param('station_node')
-			r_n = r_n.split(',')
-			route_ = int(r_n[0])
-			node_  = int(r_n[1])
-		else:
-			route_ = 0
-			node_  = 0
-
-		self.current_node.route = route_
-		self.current_node.node = node_
-
+		#self.current_node.route = route_
+		#self.current_node.node = node_
 		w = WifiIO()
 		w.purpose=self.TASK
 		w.signatures = ["ALL"]
 		w.TASK_ID = str(self.ID)+str(self.cc)
-		w.node = route_
-		w.node = node_
+		w.node = self.current_node
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
 
