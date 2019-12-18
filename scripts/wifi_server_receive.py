@@ -69,23 +69,42 @@ class Wifi():
 			self.port     = 12345
 		self.hop_count= 5
 
-	        # list of other car
-                if rospy.has_param('host_list'):
-                        h_list = rospy.get_param('host_list')
-                        h_list = h_list.split(',')
-                        self.host_list = []
-                        for i in range(len(h_list)/2):
-                                self.host_list.append((h_list[i*2],int(h_list[i*2+1])))
+		# prepare station and robot list
+		self.station_list = []
+		self.robot_list = []
 
-                else:
-                        self.host_list       = [("192.168.1.101", 12346),("192.168.1.101",12345),("192.168.1.102",12345)]
+		# list of other car
+		if rospy.has_param('station_list'):
+			h_list = rospy.get_param('station_list')
+			h_list = h_list.split(',')
+			for i in range(len(h_list)/2):
+				# remove self from list
+				if self.ID == h_list[i*2] and self.port == int(h_list[i*2+1]):
+					pass
+				else:
+					# append into list
+					self.station_list.append((h_list[i*2],int(h_list[i*2+1])))
+		else:
+			self.station_list       = [("192.168.1.102", 12345)]
 
-		for i in range(len(self.host_list)):
-        		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
-                		self.host_list.remove((self.ID ,self.port ))
-				break
-        	self.host_list = tuple(self.host_list)
-		self.length_h_l = len(self.host_list)
+		# list of other car
+		if rospy.has_param('robot_list'):
+			h_list = rospy.get_param('robot_list')
+			h_list = h_list.split(',')
+			for i in range(len(h_list)/2):
+				# remove self from list
+				if self.ID == h_list[i*2] and self.port == int(h_list[i*2+1]):
+					pass
+				else:
+					# append into list
+					self.robot_list.append((h_list[i*2],int(h_list[i*2+1])))
+		else:
+			self.robot_list       = [("192.168.1.102", 12345)]
+
+		self.station_list = tuple(self.station_list)
+		self.length_st_list = len(self.station_list)
+		self.robot_list = tuple(self.robot_list)
+		self.length_rb_list = len(self.robot_list)
 
 		# data_init
 		self.d = DATA()
