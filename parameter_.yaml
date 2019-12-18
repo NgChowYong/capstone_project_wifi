@@ -1,7 +1,7 @@
 # setting all parameter here
 
-Working_Station: 0
-IP_address: "192.168.1.101"
+Working_Station: 1
+IP_address: "192.168.1.102"
 port: 12345
 host_list: "192.168.1.102,12345,192.168.1.101,12345"
 #host_list: "192.168.1.102,12345,192.168.1.101,12345,192.168.1.101,12346"

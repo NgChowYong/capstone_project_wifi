@@ -100,14 +100,11 @@ def send_wifi(data):
 
 class WIFI_MASTER():
 	def __init__(self):
-<<<<<<< HEAD
 		rospy.init_node('wifi_master', anonymous=True)
 		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service
 		#setting up parameter
 		self.parameter_setup()
 
-=======
->>>>>>> 8619d90973001a4bacab69f7255263bb89ff8edd
 		#create node and service for shengming use
 
 		#setting up parameter
