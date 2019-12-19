@@ -232,7 +232,7 @@ class WIFI_MASTER():
 		# error code 0 for no error ; P for still processing
 		rospy.loginfo('receive: '+str(req))
 		rsp = WifiNodeOcpResponse()
-		if current_state == self.WORKING:
+		if self.current_state == self.WORKING:
 			if self.node_data.check_hit(self.current_node):
 				rsp.is_ocp = 1
 				rsp.error_code = '0'
@@ -413,13 +413,14 @@ class WIFI_MASTER():
 									ret = ask_cost(self.current_task.task_node) # reply float 
 									rospy.loginfo('MASTER: get cost: '+str(ret.cost))
 									self.current_task.self_cost = ret.cost
+									rospy.loginfo("Master: maybe got error")
 
 									# generate cost
 									c = Cost()
 									c.cost_owner = self.current_task.task_sender
-									c.cost 		 = ret.cost
-									c.target = self.task_node
-
+									c.cost 	     = ret.cost
+									c.target     = self.current_task.task_node
+									rospy.loginfo("MASTER: start task confirm")
 									# send task confirm
 									s = Task_confirm(c) # input : cost msg
 									self.current_state = self.COSTDONE
@@ -481,12 +482,16 @@ class WIFI_MASTER():
 		global reset_flag
 		if reset_flag == 1:
 			reset_flag = 0
+			self.current_node.route = 0
+			self.current_node.node = 0
 			self.button_press = 0
 			return False
 
 		if self.button_press == self.cc:
 			return False
 		else:
+			self.current_node.route = self.cc - 1
+			self.current_node.node = self.cc - 1
 			self.button_press = self.cc
 			return True
 
