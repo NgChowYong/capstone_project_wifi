@@ -529,7 +529,7 @@ class WIFI_MASTER():
 	##############################################################################
 
 	def sent_all_node(self):
-		rospy.loginfo('MASTER:send all')
+		rospy.loginfo('MASTER: ask node_ing')
 		w = WifiIO()
 		w.signatures = ["ALL"]
 		w.TASK_ID = self.current_task
