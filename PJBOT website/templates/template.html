@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+	<head>
+		<title>Flask Tutorial</title>
+		<link rel="stylesheet" href="{{ url_for('static', filename='css/template.css') }}">
+		<link rel="shortcut icon" href="{{ url_for('static', filename='icon/car_favicon.png') }}">
+	</head>
+	<body onload = "updateTime();">
+		<header>
+			<div class="grid">
+				<h1>
+					Work Station Web Terminal
+					<small>PJBOT</small>
+				</h1>
+				<h2 id="times"></h2>
+			</div>
+
+		</header>
+		<section class="body">
+		{% block content %}
+		{% endblock %}
+		</section>
+
+		<section class="body">
+			<div class="grid tCenter">
+				<strong><p class="intro">Check each robot's status.</p></strong>
+				
+				<table>
+				  <tr>
+				    <th>Robot</th>
+				    <th>Status</th>
+				    <th>Node</th>
+				  </tr>
+				  <tr>
+				    <td>{{Robot_1_Name}}</td>
+				    <td>{{Robot_1_Status}}</td>
+				    <td>{{Robot_1_Node}}</td>
+				  </tr>
+				  <tr>
+				    <td>{{Robot_2_Name}}</td>
+				    <td>{{Robot_2_Status}}</td>
+				    <td>{{Robot_2_Node}}</td>
+				  </tr>
+				</table>
+
+			</div>
+		</section>
+
+		<footer>
+			<div class="grid">
+			<p>AGV System by
+				<a href="http://www.webtrainingcentre.com">NTHU PJBOT</a>
+			featured on
+				<a style="color:red" href="http://www.webtrainingcentre.com">Power Mechanical Engineering</a>
+			</p>
+			</div>
+		</footer>
+<script type=text/javascript src="{{ url_for('static', filename='js/updateTime.js') }}"></script>
+<!--
+<script type=text/javascript src="{{ url_for('static', filename='js/generateDynamicTable.js') }}"></script>
+<script type=text/javascript src="{{ url_for('static', filename='js/loadJSON.js') }}"></script>
+
+<script type=text/javascript src="{{ url_for('static', filename='d3-graphviz/node_modules/d3/dist/d3.js') }}"></script>
+
+<script type=text/javascript src="{{ url_for('static', filename='d3-graphviz/node_modules/viz.js/viz.js') }}"></script>
+<script type=text/javascript src="{{ url_for('static', filename='d3-graphviz/build/d3-graphviz.js') }}"></script>
+
+<script type=text/javascript src="{{ url_for('static', filename='js/loadNODE.js') }}"></script>
+
+<script type=text/javascript src="{{ url_for('static', filename='js/generateGRAPH.js') }}"></script>
+-->
+</body>
+</html>
