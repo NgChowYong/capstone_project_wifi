@@ -255,7 +255,7 @@ class WIFI_MASTER():
 
 		# rospy.loginfo(str(data))
 		rospy.loginfo('MASTER: recv data from wifi with purpose : '+str(data.purpose))
-		
+
 		# recv data
 		if data.purpose == self.TASK:
 			if not WORKING_STATION: # working station not need to recv and store TASK
@@ -319,6 +319,13 @@ class WIFI_MASTER():
 									self.reply_compare(data,self.current_task)
 					else: # task is not in my task
 						rospy.loginfo('MASTER:I didnt recv this task')
+						self.database.append(TASK_DATA(data))
+						rospy.loginfo('MASTER: adding new task to database')
+						rospy.loginfo('MASTER: calc cost')
+						ret = ask_cost(data.cost.target) # reply float 
+						rospy.loginfo('MASTER: get cost: '+str(ret.cost))
+						data.cost.cost = ret
+						data.cost.cost_owner = self.ID
 						self.reply_normal(data)
 				else: # dont even have a task
 					rospy.loginfo('MASTER:I didnt recv this task')
@@ -496,6 +503,7 @@ class WIFI_MASTER():
 		w.signatures = ["ALL"]
 		w.TASK_ID = str(self.ID)+"-"+str(self.cc)
 		w.node = self.current_node
+		w.cost.target = self.current_node
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
 
@@ -521,7 +529,7 @@ class WIFI_MASTER():
 		w.signatures = ["ALL"]
 		w.TASK_ID = self.current_task
 		w.node = self.current_node
-		header = Header(stamp=rospy.Time.now(), frame_id='base')
+		#header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w.purpose = self.NODE_ASK
 		w.sender_state = self.IDLE
 		w.author = self.ID
@@ -585,7 +593,7 @@ class WIFI_MASTER():
 class TASK_DATA():
 	def __init__(self, data): # inpput is wifi IO
 		self.task_id = data.TASK_ID
-		self.task_node = data.node
+		self.task_node = data.cost.target # or data.node
 		self.task_sender = data.author
 		self.self_cost = -1
 		self.lowest_cost = -1
@@ -600,13 +608,13 @@ class NODE_DATA():
 
 	def check_hit(self,my_node): # will return will hit or not # check for next node
 		for i in range(self.length):
-			if my_node.route == self.data[i][1].route and my_node.node == self.data[i][1].node: 
+			if my_node.route == self.data[i][1].route and my_node.node == self.data[i][1].node:
 				return True # will hit
 		return False # will not hit
 
 	def update_data(self,data_): # input is wifiio
 		for i in range(self.length):
-			if self.data[i][0] == data_.sender:
+			if self.data[i][0] == data_.author:
 				self.data[i][1] = data_.node
 				break
 

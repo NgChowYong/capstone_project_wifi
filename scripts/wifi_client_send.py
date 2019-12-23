@@ -158,7 +158,7 @@ class Wifi():
 
 		if mask & selectors.EVENT_WRITE:
 			for i in self.d.signatures:
-				if data[0] == i[0]:
+				if data[0] == i[0] or data[0] == i: # ip i want to send == ip of my data
 					# could be improved by pruning of send signatures
 					rospy.loginfo('start sending wifi ')
 					# rospy.loginfo self.d
@@ -212,6 +212,7 @@ class Wifi():
 			send_no = 1
 			self.d.signatures = req.info.author # send back to author
 
+
 		elif req.info.purpose == self.COST:
 			send_no = 1
 			self.d.purpose = 'C'
@@ -221,7 +222,7 @@ class Wifi():
 				for i in range(self.length_rb_list):
 					self.d.signatures.append(self.robot_list[i])
 
-		elif req.info.purpose == self.NODE:
+		elif req.info.purpose == self.NODE: # ask A NODE
 			send_no = 1
 			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
 				self.d.signatures = []
