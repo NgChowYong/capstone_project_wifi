@@ -21,6 +21,27 @@ else:
 
 # WORKING_STATION = True # True or False
 
+def ros_node(nod):  # call for service # input is string
+        while(1):
+                try:
+                        rospy.wait_for_service('robot_wifi_nodeocp_inner',timeout=5) # wait until service available$
+                        break
+                except:
+                        rospy.loginfo("Service call failed: ask node")
+                        if self.shut == 1: # for closing this thread
+                                break
+        try:
+                # rospy.loginfo('ask central for data')
+                ask_node = rospy.ServiceProxy('robot_wifi_nodeocp_inner', WifiNodeOcp) # handler; name, service nam$
+                #header = Header(stamp=rospy.Time.now(), frame_id='base')
+                # ask route node return  0 if no ocp
+                s = ask_node(nod)
+                # rospy.loginfo('ask central for data done')
+                return s.is_ocp # boolean is occupied
+        except rospy.ServiceException, e:
+                rospy.loginfo("Service call failed:")
+
+
 def ros_serv_(p):  # call for service # input is string
         while(1):
                 try:
@@ -175,7 +196,7 @@ class Wifi():
 		try:
 			self.d = json_message_converter.convert_json_to_ros_message('tircgo_msgs/WifiIO', data_rc.decode('utf-8'))
 		except:
-			rospy.loginfo('SERVER: recv error')
+			rospy.loginfo('SERVER: recv error !!!!!!!!!!')
 			return 0, WifiIO()
 		##################################################################
 
@@ -259,14 +280,14 @@ class Wifi():
 			b = Ask_Data() # ask data reply
 			b.np_ocp.route = route_
 			b.np_ocp.node = node_
-			b.np_ocp.pos.x = -1
+			b.np_ocp.pos.x = 0
 			b.np_ocp.pos.y = -1
 			b.np_ocp.pos.z = -1
 		else:
-			b = ros_serv_(d.purpose)
+			b = ros_node(d.node)
 		rospy.loginfo('SERVER:reply for node service')
 		d.purpose = 'A'
-		d.node = b.nd_ocp
+		d.node.pos.x = b
 		send_wifi(d)
 		rospy.loginfo('SERVER:end reply node req')
 

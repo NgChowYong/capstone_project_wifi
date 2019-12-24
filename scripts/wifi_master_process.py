@@ -276,12 +276,18 @@ class WIFI_MASTER():
 		self.current_node = RouteNode()
 		self.current_node.route = route_
 		self.current_node.node = node_
+		self.node_flag = 0 # asking done
+		self.target_node = RouteNode()
+		self.node_list = []
+		for i in range(self.length_rb_list):
+			self.node_list.append([self.robot_list[i][0],0]) # ip and ocp?
+		self.node_count = 0
 
 		# current task state
 		self.current_state = self.IDLE # got IDLE , COST_ING , COST_DONE , WORKING
 		self.current_state_flag = 0 # to avoid multi thread data mixing
 		self.car_state = self.IDLE # got IDLE , HOMING , TEACHING , WORKING
-		self.node_data = NODE_DATA(self.robot_list)
+		#self.node_data = NODE_DATA(self.robot_list)
 		self.current_task = None
 		self.task_tag = 0
 
@@ -296,18 +302,22 @@ class WIFI_MASTER():
 
 	def reply_service(self,req): # provide service reply
 		# error code 0 for no error ; P for still processing
-		rospy.loginfo('want to go: '+str(req))
+		rospy.loginfo('want to go: '+str(req.route)+'_'+str(req.node))
 		rsp = WifiNodeOcpResponse()
-		if self.current_state == self.WORKING:
-			#if self.node_data.check_hit(self.current_node):
-			#	rsp.is_ocp = 1
-			#	rsp.error_code = '0'
-			#	return rsp
-			#else:
+		self.node_flag = 1
+		if self.node_flag == 0: # asking done
 			rsp.is_ocp = 0
-			rsp.error_code = '0'
+			rsp.error_code = 'O'
+			for i in range(self.length_rb_list):
+				if self.node_list[i][1] == 1:
+					rsp.is_ocp = 1
+					rsp.error_code = 'O'
+					break
+			self.node_flag = 0
+			self.node_count = 0
 			return rsp
-		else:
+		else: #processing
+			self.target_node = req
 			rsp.is_ocp = 0
 			rsp.error_code = 'P'
 			return rsp
@@ -420,7 +430,15 @@ class WIFI_MASTER():
 						self.database.remove(self.database[i])
 						break
 				# renew node list
-				self.node_data.update(data)
+				for i in range(self.length_rb_list):
+					if self.node_list[i][0] == data.author:
+						self.node_list[i][1] = data.node.pos.x
+						self.node_count += 1
+				if self.node_count >= self.length_rb_list:
+					self.node_count = 0
+					self.node_flag = 0
+
+				#self.node_data.update(data)
 				# if gonna hit will need to wait Shengming to ask !!!
 			else:
 				rospy.loginfo('MASTER:im working station dont care node asking')
@@ -462,8 +480,16 @@ class WIFI_MASTER():
 
 					# get car data
 					try:
+
+						if self.node_flag == 1: # asking start
+							# here start to keep asking node !!!
+							#current_node = time.time()
+							#if current_node - last_node > 2 : # in sec ask node
+							#	last_node = current_node
+							self.send_all_node(self.target_node)
+
 						car = ros_serv_("N")
-						self.current_node = car.nd_ocp
+						self.current_node = RouteNode()
 						if car.mode & 1 :
 							rospy.loginfo("MASTER: center is idle")
 							self.car_state = self.IDLE
@@ -524,11 +550,6 @@ class WIFI_MASTER():
 						elif car.mode & 16 :
 							self.car_state = self.WORKING
 							rospy.loginfo("MASTER: center is working")
-							# here start to keep asking node !!!
-							current_node = time.time()
-							if current_node - last_node > 2 : # in sec ask node
-								last_node = current_node
-								self.send_all_node()
 							self.task_tag = 1
 						# update website
 						current_node = time.time()
@@ -608,12 +629,15 @@ class WIFI_MASTER():
 
 	##############################################################################
 
-	def sent_all_node(self):
+	def sent_all_node(self,node): #input is target node
 		rospy.loginfo('MASTER: ask node_ing')
 		w = WifiIO()
 		w.signatures = ["ALL"]
-		w.TASK_ID = self.current_task
-		w.node = self.current_node
+		if self.current_task == None:
+			w.TASK_ID = "NONE"
+		else:
+			w.TASK_ID = self.current_task
+		w.node = node
 		#header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w.purpose = self.NODE_ASK
 		w.sender_state = self.IDLE
