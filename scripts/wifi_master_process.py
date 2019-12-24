@@ -323,7 +323,7 @@ class WIFI_MASTER():
 		elif data.purpose == self.COST: # there are some problem here
 			rospy.loginfo('MASTER: recv in cost')
 			# rospy.loginfo('MASTER: cost: '+str(data.cost))
-			if data.sender_state == self.IDLE: # sender is normal ppl
+			if data.sender_state != self.WORKING: # sender is normal ppl
 				rospy.loginfo('MASTER:sender is idle')
 				if len(self.database) > 0 or self.current_task != None or not WORKING_STATION: # i got some task working or working state
 					rospy.loginfo('MASTER: IM GOT SOME TASK')
@@ -342,7 +342,7 @@ class WIFI_MASTER():
 						if self.current_state == self.WORKING:
 							self.reply_normal(data,self.WORKING) # reply without me only
 							rospy.loginfo('MASTER: IM WORKING')
-						else:
+						elif self.current_state != self.WORKING:
 							rospy.loginfo('MASTER: IM IDLE')
 							if len(data.signatures) == 0: # i receive the last data
 								if data.cost.cost_owner == self.ID and data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
@@ -381,7 +381,7 @@ class WIFI_MASTER():
 					rospy.loginfo('MASTER:I didnt recv this task')
 					# return im normal
 					self.reply_normal(data)
-			elif data.sender_state == self.WORKING:
+			else :  # data.sender_state == self.WORKING:
 				if self.current_state == self.WORKING:
 					rospy.loginfo('MASTER:sender is WORKING im WORKING')
 					self.reply_normal(data,self.WORKING)
