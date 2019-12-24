@@ -46,7 +46,6 @@ class WEB_DATA():
 	def get_c(self):
 		return self.counter
 
-
 # for share data of web app and code
 web_data = WEB_DATA()
 web_data.set_counter()
@@ -164,7 +163,6 @@ class WIFI_MASTER():
 			self.port     = 12345
 
 		# some parameter
-		self.cc = 0
 		self.COST = 'C'
 		self.TASK = 'W'
 		self.NODE = 'A'
@@ -181,6 +179,7 @@ class WIFI_MASTER():
 		self.TEACHING = "TEACHING"
 
 		# locking for update job and subs
+		self.cc = 0
 		self.LOCK   = 1
 		self.UNLOCK = 0
 		self.lock_1 = self.LOCK
@@ -310,7 +309,12 @@ class WIFI_MASTER():
 					if data.TASK_ID == self.database[i].task_id:
 						rospy.loginfo('MASTER: tasked aldy in database')
 						check_flag = 1
-						break
+
+					if self.current_task != None:
+						if data.TASK_ID == self.current_task.task_id:
+							rospy.loginfo('MASTER: tasked aldy in my current task')
+							check_flag = 1
+
 				if check_flag == 0: # append if not old task
 					self.database.append(TASK_DATA(data))
 					rospy.loginfo('MASTER: adding new task to database')
