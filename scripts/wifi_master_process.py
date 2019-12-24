@@ -21,7 +21,29 @@ if rospy.has_param('Working_Station'):
 else:
 	WORKING_STATION = False
 
+class WEB_DATA():
+	def __init__(self):
+		#self.print_list = [] # data include name, status, node
+		self.counter = 0
+		self.Robot_1 = ['Robot_1', 'Working', 'R_2']
+		self.Robot_2 = ['Robot_2', 'Working', 'T_5']
+		#self.print_list.append(Robot_1)
+		#self.print_list.append(Robot_2)
+
+	def update_data(self,data):
+		self.counter = 0
+
+	#def update_robot(self,robot_list):
+	#	for i in range(len(robot_list)):
+	#		self.print_list.append([robot_list[i][0],"IDLE","0,0"])
+
+	def update_coutner(self,counter = 0):
+		self.counter = counter
+
+web_data = WEB_DATA()
+
 # for share data of web app and code
+# web_data.update_counter()
 counter = 0
 reset_flag = 0
 
@@ -181,6 +203,10 @@ class WIFI_MASTER():
 		if rospy.has_param('robot_list'):
 			h_list = rospy.get_param('robot_list')
 			h_list = h_list.split(',')
+
+			web_data.Robot_1[0] = h_list[0]
+			web_data.Robot_2[0] = h_list[2]
+
 			for i in range(len(h_list)/2):
 				# remove self from list
 				if self.ID == h_list[i*2] and self.port == int(h_list[i*2+1]):
@@ -363,7 +389,7 @@ class WIFI_MASTER():
 			if data.purpose == self.WEB:
 			# check if data to working station recv
 			# 	do a function to adjust the thing
-				self.update_web(data.ctrldata)
+				self.update_web(data)
 		##########################################################################################
 
 		if self.lock_1 == self.LOCK:
@@ -512,9 +538,14 @@ class WIFI_MASTER():
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
 
-	def update_web(self,ctrldata): # collect data and update web
+	def update_web(self,data): # collect data and update web
 		rospy.loginfo('MASTER: update web here')
-		pass
+        if data.author == web_data.Robot_1[0]:
+            web_data.Robot_1[1] = data.ctrldata.mode
+		    web_data.Robot_1[1] = data.node
+		if data.author == web_data.Robot_2[0]:
+            web_data.Robot_2[2] = data.ctrldata.mode
+		    web_data.Robot_2[2] = data.node
 
 	def send_update_web(self,ctrldata): # send data to web
 		rospy.loginfo('MASTER: send update web')
@@ -529,7 +560,7 @@ class WIFI_MASTER():
 	##############################################################################
 
 	def sent_all_node(self):
-		rospy.loginfo('MASTER:send all')
+		rospy.loginfo('MASTER: ask node_ing')
 		w = WifiIO()
 		w.signatures = ["ALL"]
 		w.TASK_ID = self.current_task
@@ -626,25 +657,29 @@ class NODE_DATA():
 def apprun():
 	app=Flask(__name__)
 
-	@app.route('/',methods=['GET'])
-	def initialize():
-		global counter
-		counter = 0
-		return render_template('index.html',call=counter)
+	@app.route("/")
+	def index():
+	    return render_template('index.html',call=counter,
+	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
+	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])
 
-	@app.route('/submit',methods=['POST'])
+	@app.route('/submit', methods=['POST'])
 	def submit():
-		global counter
-		counter += 1
-		return render_template('index.html',call=counter)
+	        global counter
+	        counter += 1
+	        print "counter = : ", counter
+	        return render_template('index.html',call=counter,
+	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
+	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])
 
-	@app.route('/reset',methods=['POST'])
+	@app.route('/reset', methods=['POST'])
 	def reset():
-		global counter
-		global reset_flag
-		counter = 0
-		reset_flag = 1
-		return render_template('index.html',call=counter)
+	        global counter
+	        counter =0
+	        print "counter = : ", counter
+	        return render_template('index.html',call=counter,
+	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
+	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])
 
 	app.run(host='0.0.0.0',debug=False,port=5000)
 
