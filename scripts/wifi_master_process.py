@@ -51,6 +51,27 @@ web_data = WEB_DATA()
 web_data.set_counter()
 reset_flag = 0
 
+def ros_node(nod):  # call for service # input is string
+	while(1):
+		try:
+			rospy.wait_for_service('robot_wifi_nodeocp_inner',timeout=5) # wait until service available # service name
+			break
+		except:
+			rospy.loginfo("Service call failed: ask node")
+			if self.shut == 1: # for closing this thread
+				break
+	try:
+		# rospy.loginfo('ask central for data')
+		ask_node = rospy.ServiceProxy('robot_wifi_nodeocp_inner', WifiNodeOcp) # handler; name, service name the --- one
+		#header = Header(stamp=rospy.Time.now(), frame_id='base')
+		# ask route node return  0 if no ocp
+		s = ask_node(nod)
+		# rospy.loginfo('ask central for data done')
+		return s.is_ocp # boolean is occupied
+	except rospy.ServiceException, e:
+		rospy.loginfo("Service call failed:")
+
+
 def ros_serv_(p):  # call for service # input is string
 	while(1):
 		try:
@@ -275,17 +296,17 @@ class WIFI_MASTER():
 
 	def reply_service(self,req): # provide service reply
 		# error code 0 for no error ; P for still processing
-		rospy.loginfo('receive: '+str(req))
+		rospy.loginfo('want to go: '+str(req))
 		rsp = WifiNodeOcpResponse()
 		if self.current_state == self.WORKING:
-			if self.node_data.check_hit(self.current_node):
-				rsp.is_ocp = 1
-				rsp.error_code = '0'
-				return rsp
-			else:
-				rsp.is_ocp = 0
-				rsp.error_code = '0'
-				return rsp
+			#if self.node_data.check_hit(self.current_node):
+			#	rsp.is_ocp = 1
+			#	rsp.error_code = '0'
+			#	return rsp
+			#else:
+			rsp.is_ocp = 0
+			rsp.error_code = '0'
+			return rsp
 		else:
 			rsp.is_ocp = 0
 			rsp.error_code = 'P'
@@ -345,7 +366,8 @@ class WIFI_MASTER():
 						elif self.current_state != self.WORKING:
 							rospy.loginfo('MASTER: IM IDLE')
 							if len(data.signatures) == 0: # i receive the last data
-								if data.cost.cost_owner == self.ID and data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
+								if  data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
+								#if data.cost.cost_owner == self.ID and data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
 									rospy.loginfo('MASTER: IM GOING to do the job')
 									# here do task confirmation
 									s = Task_confirm(data.cost)
@@ -569,10 +591,10 @@ class WIFI_MASTER():
 		rospy.loginfo('MASTER: update web here')
                 if data.author == web_data.Robot_1[0]:
                     web_data.Robot_1[1] = data.ctrldata.mode
-		    web_data.Robot_1[1] = data.node
+		    web_data.Robot_1[2] = str(data.node.route)+'_'+str(data.node.node)
 		if data.author == web_data.Robot_2[0]:
-                    web_data.Robot_2[2] = data.ctrldata.mode
-		    web_data.Robot_2[2] = data.node
+                    web_data.Robot_2[1] = data.ctrldata.mode
+		    web_data.Robot_2[2] = str(data.node.route)+'_'+str(data.node.node)
 
 	def send_update_web(self,ctrldata): # send data to web
 		rospy.loginfo('MASTER: send update web')
