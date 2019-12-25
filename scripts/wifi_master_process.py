@@ -51,6 +51,27 @@ web_data = WEB_DATA()
 web_data.set_counter()
 reset_flag = 0
 
+def ros_node(nod):  # call for service # input is string
+	while(1):
+		try:
+			rospy.wait_for_service('robot_wifi_nodeocp_inner',timeout=5) # wait until service available # service name
+			break
+		except:
+			rospy.loginfo("Service call failed: ask node")
+			if self.shut == 1: # for closing this thread
+				break
+	try:
+		# rospy.loginfo('ask central for data')
+		ask_node = rospy.ServiceProxy('robot_wifi_nodeocp_inner', WifiNodeOcp) # handler; name, service name the --- one
+		#header = Header(stamp=rospy.Time.now(), frame_id='base')
+		# ask route node return  0 if no ocp
+		s = ask_node(nod)
+		# rospy.loginfo('ask central for data done')
+		return s.is_ocp # boolean is occupied
+	except rospy.ServiceException, e:
+		rospy.loginfo("Service call failed:")
+
+
 def ros_serv_(p):  # call for service # input is string
 	while(1):
 		try:
@@ -255,12 +276,18 @@ class WIFI_MASTER():
 		self.current_node = RouteNode()
 		self.current_node.route = route_
 		self.current_node.node = node_
+		self.node_flag = 0 # asking done
+		self.target_node = RouteNode()
+		self.node_list = []
+		for i in range(self.length_rb_list):
+			self.node_list.append([self.robot_list[i][0],0]) # ip and ocp?
+		self.node_count = 0
 
 		# current task state
 		self.current_state = self.IDLE # got IDLE , COST_ING , COST_DONE , WORKING
 		self.current_state_flag = 0 # to avoid multi thread data mixing
 		self.car_state = self.IDLE # got IDLE , HOMING , TEACHING , WORKING
-		self.node_data = NODE_DATA(self.robot_list)
+		#self.node_data = NODE_DATA(self.robot_list)
 		self.current_task = None
 		self.task_tag = 0
 
@@ -275,18 +302,22 @@ class WIFI_MASTER():
 
 	def reply_service(self,req): # provide service reply
 		# error code 0 for no error ; P for still processing
-		rospy.loginfo('receive: '+str(req))
+		rospy.loginfo('want to go: '+str(req.route)+'_'+str(req.node))
 		rsp = WifiNodeOcpResponse()
-		if self.current_state == self.WORKING:
-			if self.node_data.check_hit(self.current_node):
-				rsp.is_ocp = 1
-				rsp.error_code = '0'
-				return rsp
-			else:
-				rsp.is_ocp = 0
-				rsp.error_code = '0'
-				return rsp
-		else:
+		self.node_flag = 1
+		if self.node_flag == 0: # asking done
+			rsp.is_ocp = 0
+			rsp.error_code = 'O'
+			for i in range(self.length_rb_list):
+				if self.node_list[i][1] == 1:
+					rsp.is_ocp = 1
+					rsp.error_code = 'O'
+					break
+			self.node_flag = 0
+			self.node_count = 0
+			return rsp
+		else: #processing
+			self.target_node = req
 			rsp.is_ocp = 0
 			rsp.error_code = 'P'
 			return rsp
@@ -345,7 +376,8 @@ class WIFI_MASTER():
 						elif self.current_state != self.WORKING:
 							rospy.loginfo('MASTER: IM IDLE')
 							if len(data.signatures) == 0: # i receive the last data
-								if data.cost.cost_owner == self.ID and data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
+								if  data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
+								#if data.cost.cost_owner == self.ID and data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
 									rospy.loginfo('MASTER: IM GOING to do the job')
 									# here do task confirmation
 									s = Task_confirm(data.cost)
@@ -398,7 +430,15 @@ class WIFI_MASTER():
 						self.database.remove(self.database[i])
 						break
 				# renew node list
-				self.node_data.update(data)
+				for i in range(self.length_rb_list):
+					if self.node_list[i][0] == data.author:
+						self.node_list[i][1] = data.node.pos.x
+						self.node_count += 1
+				if self.node_count >= self.length_rb_list:
+					self.node_count = 0
+					self.node_flag = 0
+
+				#self.node_data.update(data)
 				# if gonna hit will need to wait Shengming to ask !!!
 			else:
 				rospy.loginfo('MASTER:im working station dont care node asking')
@@ -440,8 +480,16 @@ class WIFI_MASTER():
 
 					# get car data
 					try:
+
+						if self.node_flag == 1: # asking start
+							# here start to keep asking node !!!
+							#current_node = time.time()
+							#if current_node - last_node > 2 : # in sec ask node
+							#	last_node = current_node
+							self.send_all_node(self.target_node)
+
 						car = ros_serv_("N")
-						self.current_node = car.nd_ocp
+						self.current_node = RouteNode()
 						if car.mode & 1 :
 							rospy.loginfo("MASTER: center is idle")
 							self.car_state = self.IDLE
@@ -502,11 +550,6 @@ class WIFI_MASTER():
 						elif car.mode & 16 :
 							self.car_state = self.WORKING
 							rospy.loginfo("MASTER: center is working")
-							# here start to keep asking node !!!
-							current_node = time.time()
-							if current_node - last_node > 2 : # in sec ask node
-								last_node = current_node
-								self.send_all_node()
 							self.task_tag = 1
 						# update website
 						current_node = time.time()
@@ -569,10 +612,10 @@ class WIFI_MASTER():
 		rospy.loginfo('MASTER: update web here')
                 if data.author == web_data.Robot_1[0]:
                     web_data.Robot_1[1] = data.ctrldata.mode
-		    web_data.Robot_1[1] = data.node
+		    web_data.Robot_1[2] = str(data.node.route)+'_'+str(data.node.node)
 		if data.author == web_data.Robot_2[0]:
-                    web_data.Robot_2[2] = data.ctrldata.mode
-		    web_data.Robot_2[2] = data.node
+                    web_data.Robot_2[1] = data.ctrldata.mode
+		    web_data.Robot_2[2] = str(data.node.route)+'_'+str(data.node.node)
 
 	def send_update_web(self,ctrldata): # send data to web
 		rospy.loginfo('MASTER: send update web')
@@ -586,12 +629,15 @@ class WIFI_MASTER():
 
 	##############################################################################
 
-	def sent_all_node(self):
+	def sent_all_node(self,node): #input is target node
 		rospy.loginfo('MASTER: ask node_ing')
 		w = WifiIO()
 		w.signatures = ["ALL"]
-		w.TASK_ID = self.current_task
-		w.node = self.current_node
+		if self.current_task == None:
+			w.TASK_ID = "NONE"
+		else:
+			w.TASK_ID = self.current_task
+		w.node = node
 		#header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w.purpose = self.NODE_ASK
 		w.sender_state = self.IDLE
