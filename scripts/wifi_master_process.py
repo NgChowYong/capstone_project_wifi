@@ -277,6 +277,7 @@ class WIFI_MASTER():
 		self.current_node.route = route_
 		self.current_node.node = node_
 		self.node_flag = 0 # asking done
+		self.node_flag2 = 1 # asking done
 		self.target_node = RouteNode()
 		self.node_list = []
 		for i in range(self.length_rb_list):
@@ -302,22 +303,24 @@ class WIFI_MASTER():
 
 	def reply_service(self,req): # provide service reply
 		# error code 0 for no error ; P for still processing
-		rospy.loginfo('want to go: '+str(req.route)+'_'+str(req.node))
+		rospy.loginfo('want to go: '+str(req.q_rn.route)+'_'+str(req.q_rn.node))
 		rsp = WifiNodeOcpResponse()
 		self.node_flag = 1
-		if self.node_flag == 0: # asking done
+		if self.node_flag2 == 0: # asking done
 			rsp.is_ocp = 0
 			rsp.error_code = 'O'
 			for i in range(self.length_rb_list):
 				if self.node_list[i][1] == 1:
 					rsp.is_ocp = 1
 					rsp.error_code = 'O'
+					self.node_flag = 0
 					break
 			self.node_flag = 0
 			self.node_count = 0
 			return rsp
 		else: #processing
-			self.target_node = req
+			self.node_flag2 = 1
+			self.target_node = req.q_rn
 			rsp.is_ocp = 0
 			rsp.error_code = 'P'
 			return rsp
@@ -436,8 +439,10 @@ class WIFI_MASTER():
 						self.node_count += 1
 				if self.node_count >= self.length_rb_list:
 					self.node_count = 0
-					self.node_flag = 0
-
+					self.node_flag2 = 0
+					rospy.loginfo("MASTER: done asking all")
+				else:
+					self.node_flag2 = 1
 				#self.node_data.update(data)
 				# if gonna hit will need to wait Shengming to ask !!!
 			else:
@@ -486,8 +491,11 @@ class WIFI_MASTER():
 							#current_node = time.time()
 							#if current_node - last_node > 2 : # in sec ask node
 							#	last_node = current_node
+							rospy.loginfo("MASTER: start ask node")
 							self.send_all_node(self.target_node)
-
+							rospy.loginfo("MASTER: start ask node done")
+						else:
+							rospy.loginfo("MASTER: not start @@ ask node")
 						car = ros_serv_("N")
 						self.current_node = RouteNode()
 						if car.mode & 1 :
@@ -629,7 +637,7 @@ class WIFI_MASTER():
 
 	##############################################################################
 
-	def sent_all_node(self,node): #input is target node
+	def send_all_node(self,node): #input is target node
 		rospy.loginfo('MASTER: ask node_ing')
 		w = WifiIO()
 		w.signatures = ["ALL"]

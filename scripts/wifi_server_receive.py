@@ -184,7 +184,7 @@ class Wifi():
 
 		if mask & selectors.EVENT_WRITE: #normally write
 			if flag != 0:
-				if self.previous_sender == data and self.previous_sender!= self.ID: 
+				if self.previous_sender == data[0][0] and self.previous_sender!= self.ID: 
 					rospy.loginfo('SERVER:rdy to reply data')
 					self.reply_data(data_,flag) # maybe can use sock as signature to return
 					flag = 0
@@ -206,7 +206,8 @@ class Wifi():
 		rospy.loginfo('SERVER: start receive data'+str(self.d.signatures))
 
 		if self.d.purpose == self.TASK: # reply to working station
-            		flag = 1
+            		#flag = 1
+			flag = 0
 			self.d.signatures = [self.d.sender]
 		elif self.d.purpose == self.NODE: # reply node
 			flag = 2

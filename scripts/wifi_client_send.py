@@ -200,12 +200,17 @@ class Wifi():
 		self.d.sender = self.ID
 		# note that author decide by master only
 
+		if isinstance(self.d.signatures,str):
+			self.d.signatures =  eval(self.d.signatures)
+			rospy.loginfo(str(req.info.signatures))
+		else:
+			rospy.loginfo(str(req.info.signatures))
 		# for clearing string tuple problem
-		if self.d.signatures[0] != "ALL":
-			while not isinstance(self.d.signatures[0],tuple):
-				self.d.signatures = self.d.signatures[0]
-			for i in range(len(self.d.signatures)):
-        	                self.d.signatures[i] =  eval(self.d.signatures[i])
+		#if self.d.signatures[0] != "ALL":
+		#	while not isinstance(self.d.signatures[0],tuple):
+		#		self.d.signatures = self.d.signatures[0]
+		#	for i in range(len(self.d.signatures)):
+        	#                self.d.signatures[i] =  eval(self.d.signatures[i])
 
 		if req.info.purpose == self.NODE_REPLY: # routenode details is renewed in master node 
 			self.d.purpose = 'A'
