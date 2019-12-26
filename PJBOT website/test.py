@@ -15,6 +15,15 @@ def index():
 					Robot_1_Name=Robot_1[0],Robot_1_Status=Robot_1[1],Robot_1_Node=Robot_1[2],
 					Robot_2_Name=Robot_2[0],Robot_2_Status=Robot_2[1],Robot_2_Node=Robot_2[2])
 
+@app.route("/command", methods=['POST'])
+def command():
+    text = request.form['text']
+    processed_text = text
+    print(processed_text)
+    return render_template('index.html',call=counter,
+					Robot_1_Name=Robot_1[0],Robot_1_Status=Robot_1[1],Robot_1_Node=Robot_1[2],
+					Robot_2_Name=Robot_2[0],Robot_2_Status=Robot_2[1],Robot_2_Node=Robot_2[2])
+
 @app.route('/submit', methods=['POST'])
 def submit():
 	global counter

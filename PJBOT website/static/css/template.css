@@ -451,20 +451,22 @@ header small{
 .body{
 	margin-top:30px;
 	margin-bottom:30px;
-	min-height:362px;
+	min-height:300px;
 }
 footer {
 	background: #000;
 	color:#fff;
 	text-align: center;
 	border-top:1px solid #ddd;
-	padding:39px;
+	padding:10px;
+	width: 100%;
+	position: fixed;
 	bottom: 0px;
 	clear: both;
 }
 
 footer  p{
-   	margin:0;
+   	margin:10px;
 }
 
 .intro{

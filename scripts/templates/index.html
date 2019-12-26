@@ -3,6 +3,7 @@
 	<head>
 		<title>Flask Tutorial</title>
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/template.css') }}">
+		<link rel="stylesheet" href="{{ url_for('static', filename='css/input_form.css') }}">
 		<link rel="shortcut icon" href="{{ url_for('static', filename='icon/car_favicon.png') }}">
 	</head>
 	<body>
@@ -21,9 +22,11 @@
 				</div>
 			</div>
 			<div class="grid tCenter">
-				<form method="POST">
-				<input name="text">
-				<input type="submit">
+				<strong><p class="intro">Command</p></strong>
+				<form action="/command" method="POST">
+				<input type="text" name="text">
+</br>
+				<input type="submit" value="Submit">
 				</form>
 			</div>
 	{% endblock %}

@@ -27,6 +27,9 @@ class WEB_DATA():
 		self.counter = 0
 		self.Robot_1 = ['Robot_1', 'IDLE', 'not started']
 		self.Robot_2 = ['Robot_2', 'IDLE', 'not started']
+		self.text = "STARTING"
+		self.route = 0
+		self.node = 0
 		#self.print_list.append(Robot_1)
 		#self.print_list.append(Robot_2)
 
@@ -36,6 +39,10 @@ class WEB_DATA():
 	#def update_robot(self,robot_list):
 	#	for i in range(len(robot_list)):
 	#		self.print_list.append([robot_list[i][0],"IDLE","0,0"])
+	def update_rn(self):
+		no_ = self.text.split(',')
+		self.route = int(no_[0])
+		self.node = int(no_[1])
 
 	def set_counter(self,counter = 0):
 		self.counter = counter
@@ -320,6 +327,7 @@ class WIFI_MASTER():
 			return rsp
 		else: #processing
 			self.node_flag2 = 1
+			self.node_flag = 0
 			self.target_node = req.q_rn
 			rsp.is_ocp = 0
 			rsp.error_code = 'P'
@@ -601,8 +609,11 @@ class WIFI_MASTER():
 		if self.button_press == self.cc:
 			return False
 		else:
-			self.current_node.route = self.cc - 1
-			self.current_node.node = self.cc - 1
+
+			#self.current_node.route = self.cc - 1
+			#self.current_node.node = self.cc - 1
+			self.current_node.route = web_data.route
+			self.current_node.node = web_data.node
 			self.button_press = self.cc
 			return True
 
@@ -742,6 +753,16 @@ def apprun():
 	@app.route("/")
 	def index():
 	    return render_template('index.html',call=web_data.get_c(),
+	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
+	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])
+
+	@app.route("/command", methods=['POST'])
+	def command():
+		web_data.text = request.form['text']
+		web_data.update_rn()
+		#processed_text = text
+		print(processed_text)
+		return render_template('index.html',call=web_data.get_c(),
 	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
 	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])
 

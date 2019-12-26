@@ -3,6 +3,7 @@
 	<head>
 		<title>Flask Tutorial</title>
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/template.css') }}">
+		<link rel="stylesheet" href="{{ url_for('static', filename='css/input_form.css') }}">
 		<link rel="shortcut icon" href="{{ url_for('static', filename='icon/car_favicon.png') }}">
 	</head>
 	<body onload = "updateTime();">
@@ -49,25 +50,12 @@
 		<footer>
 			<div class="grid">
 			<p>AGV System by
-				<a href="http://www.webtrainingcentre.com">NTHU PJBOT</a>
+				<a href="http://www.pme.nthu.edu.tw/bin/home.php">NTHU PJBOT</a>
 			featured on
-				<a style="color:red" href="http://www.webtrainingcentre.com">Power Mechanical Engineering</a>
+				<a style="color:red" href="http://www.pme.nthu.edu.tw/bin/home.php">Power Mechanical Engineering</a>
 			</p>
 			</div>
 		</footer>
 <script type=text/javascript src="{{ url_for('static', filename='js/updateTime.js') }}"></script>
-<!--
-<script type=text/javascript src="{{ url_for('static', filename='js/generateDynamicTable.js') }}"></script>
-<script type=text/javascript src="{{ url_for('static', filename='js/loadJSON.js') }}"></script>
-
-<script type=text/javascript src="{{ url_for('static', filename='d3-graphviz/node_modules/d3/dist/d3.js') }}"></script>
-
-<script type=text/javascript src="{{ url_for('static', filename='d3-graphviz/node_modules/viz.js/viz.js') }}"></script>
-<script type=text/javascript src="{{ url_for('static', filename='d3-graphviz/build/d3-graphviz.js') }}"></script>
-
-<script type=text/javascript src="{{ url_for('static', filename='js/loadNODE.js') }}"></script>
-
-<script type=text/javascript src="{{ url_for('static', filename='js/generateGRAPH.js') }}"></script>
--->
 </body>
 </html>
