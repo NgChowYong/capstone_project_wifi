@@ -14,6 +14,7 @@ from rospy_message_converter import message_converter
 from rospy_message_converter import json_message_converter
 from ros_wifi.msg import ControllerTalk
 
+
 if rospy.has_param('Working_Station'):
 	WORKING_STATION = rospy.get_param('Working_Station')
 else:
@@ -21,13 +22,34 @@ else:
 
 # WORKING_STATION = True # True or False
 
+def ros_node(nod):  # call for service # input is string
+        while(1):
+                try:
+                        rospy.wait_for_service('robot_wifi_nodeocp_inner',timeout=5) # wait until service available$
+                        break
+                except:
+                        rospy.loginfo("Service call failed: ask node")
+                        if self.shut == 1: # for closing this thread
+                                break
+        try:
+                # rospy.loginfo('ask central for data')
+                ask_node = rospy.ServiceProxy('robot_wifi_nodeocp_inner', WifiNodeOcp) # handler; name, service nam$
+                #header = Header(stamp=rospy.Time.now(), frame_id='base')
+                # ask route node return  0 if no ocp
+                s = ask_node(nod)
+                # rospy.loginfo('ask central for data done')
+                return s.is_ocp # boolean is occupied
+        except rospy.ServiceException, e:
+                rospy.loginfo("Service call failed:")
+
+
 def ros_serv_(p):  # call for service # input is string
         while(1):
                 try:
-                        rospy.wait_for_service('robot_wifi_askdata_inner',timeout=1) # wait until service availabl$
+                        rospy.wait_for_service('robot_wifi_askdata_inner',timeout=1) # wait until service available # service name
                         break
                 except:
-                        rospy.loginfo("Service call failed: ask data")
+                        rospy.loginfo("Service call failed: task confirm")
 	try:
 		rospy.loginfo('SERVER:ask central for data')
 		ask_data = rospy.ServiceProxy('robot_wifi_askdata_inner', Ask_Data) # handler; name, service name the --- one
@@ -69,22 +91,42 @@ class Wifi():
 			self.port     = 12345
 		self.hop_count= 5
 
-	        # list of other car
-                if rospy.has_param('host_list'):
-                        h_list = rospy.get_param('host_list')
-                        h_list = h_list.split(',')
-                        self.host_list = []
-                        for i in range(len(h_list)/2):
-                                self.host_list.append((h_list[i*2],int(h_list[i*2+1])))
+		# prepare station and robot list
+		self.station_list = []
+		self.robot_list = []
 
-                else:
-                        self.host_list       = [("192.168.1.101", 12346),("192.168.1.101",12345),("192.168.1.102",12345)]
-		for i in range(len(self.host_list)):
-        		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
-                		self.host_list.remove((self.ID ,self.port ))
-				break
-        	self.host_list = tuple(self.host_list)
-		self.length_h_l = len(self.host_list)
+		# list of other car
+		if rospy.has_param('station_list'):
+			h_list = rospy.get_param('station_list')
+			h_list = h_list.split(',')
+			for i in range(len(h_list)/2):
+				# remove self from list
+				if self.ID == h_list[i*2] and self.port == int(h_list[i*2+1]):
+					pass
+				else:
+					# append into list
+					self.station_list.append((h_list[i*2],int(h_list[i*2+1])))
+		else:
+			self.station_list       = [("192.168.1.102", 12345)]
+
+		# list of other car
+		if rospy.has_param('robot_list'):
+			h_list = rospy.get_param('robot_list')
+			h_list = h_list.split(',')
+			for i in range(len(h_list)/2):
+				# remove self from list
+				if self.ID == h_list[i*2] and self.port == int(h_list[i*2+1]):
+					pass
+				else:
+					# append into list
+					self.robot_list.append((h_list[i*2],int(h_list[i*2+1])))
+		else:
+			self.robot_list       = [("192.168.1.102", 12345)]
+
+		self.station_list = tuple(self.station_list)
+		self.length_st_list = len(self.station_list)
+		self.robot_list = tuple(self.robot_list)
+		self.length_rb_list = len(self.robot_list)
 
 		# data_init
 		self.d = DATA()
@@ -143,25 +185,35 @@ class Wifi():
 
 		if mask & selectors.EVENT_WRITE: #normally write
 			if flag != 0:
-				if self.previous_sender == data and self.previous_sender!= self.ID: 
+				if self.previous_sender == data[0][0] and self.previous_sender!= self.ID: 
 					rospy.loginfo('SERVER:rdy to reply data')
 					self.reply_data(data_,flag) # maybe can use sock as signature to return
 					flag = 0
 
 	def receive_data(self,data_rc):
-		rospy.loginfo('SERVER:start receive data')
+		rospy.loginfo('SERVER: start receive data')
+
+		##################################################################
+		try:
+
 		self.d = json_message_converter.convert_json_to_ros_message('ros_wifi/WifiIO', data_rc.decode('utf-8'))
+		except:
+			rospy.loginfo('SERVER: recv error !!!!!!!!!!')
+			return 0, WifiIO()
+		##################################################################
+
 		flag = 0
 		for i in range(len(self.d.signatures)):
 			self.d.signatures[i] =	eval(self.d.signatures[i])
-		rospy.loginfo('SERVER:start receive data'+str(self.d.signatures))
+		rospy.loginfo('SERVER: start receive data'+str(self.d.signatures))
 
 		if self.d.purpose == self.TASK: # reply to working station
-            		flag = 1
+            		#flag = 1
+			flag = 0
 			self.d.signatures = [self.d.sender]
 		elif self.d.purpose == self.NODE: # reply node
 			flag = 2
-			self.d.signatures = [self.d.sender]
+			self.d.signatures = [self.d.author]
 		elif self.d.purpose == self.NODE_REPLY: # just rossend
 			flag = 0
 		elif self.d.purpose == self.COST: # remove signature then rossend
@@ -231,14 +283,14 @@ class Wifi():
 			b = Ask_Data() # ask data reply
 			b.np_ocp.route = route_
 			b.np_ocp.node = node_
-			b.np_ocp.pos.x = -1
+			b.np_ocp.pos.x = 0
 			b.np_ocp.pos.y = -1
 			b.np_ocp.pos.z = -1
 		else:
-			b = ros_serv_(d.purpose)
+			b = ros_node(d.node)
 		rospy.loginfo('SERVER:reply for node service')
 		d.purpose = 'A'
-		d.node = b.nd_ocp
+		d.node.pos.x = b
 		send_wifi(d)
 		rospy.loginfo('SERVER:end reply node req')
 

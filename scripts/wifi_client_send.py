@@ -20,8 +20,6 @@ if rospy.has_param('Working_Station'):
 else:
 	WORKING_STATION = False
 
-# WORKING_STATION = True # True or False
-
 class Wifi():
 	def __init__(self):
 		rospy.init_node('wifi_client_send')
@@ -40,47 +38,71 @@ class Wifi():
 
 		self.hop_count= 5
 
+		# prepare station and robot list
+		self.station_list = []
+		self.robot_list = []
 
-		if rospy.has_param('host_list'):
-                        h_list = rospy.get_param('host_list')
-                        h_list = h_list.split(',')
-                        self.host_list = []
-                        for i in range(len(h_list)/2):
-                                self.host_list.append((h_list[i*2],int(h_list[i*2+1])))
+		# list of other car
+		if rospy.has_param('station_list'):
+			h_list = rospy.get_param('station_list')
+			h_list = h_list.split(',')
+			for i in range(len(h_list)/2):
+				# remove self from list
+				if self.ID == h_list[i*2] and self.port == int(h_list[i*2+1]):
+					pass
+				else:
+					# append into list
+					self.station_list.append((h_list[i*2],int(h_list[i*2+1])))
+		else:
+			self.station_list       = [("192.168.1.102", 12345)]
 
-                else:
-                        self.host_list       = [("192.168.1.101", 12346),("192.168.1.101",12345),("192.168.1.102",12345)]
-	        for i in range(len(self.host_list)):
-        		if self.host_list[i][0] == self.ID and self.host_list[i][1] == self.port:
-                		self.host_list.remove((self.ID ,self.port ))
-				break
+		# list of other car
+		if rospy.has_param('robot_list'):
+			h_list = rospy.get_param('robot_list')
+			h_list = h_list.split(',')
+			for i in range(len(h_list)/2):
+				# remove self from list
+				if self.ID == h_list[i*2] and self.port == int(h_list[i*2+1]):
+					pass
+				else:
+					# append into list
+					self.robot_list.append((h_list[i*2],int(h_list[i*2+1])))
+		else:
+			self.robot_list       = [("192.168.1.102", 12345)]
 
-        	self.host_list = tuple(self.host_list)
+		self.station_list = tuple(self.station_list)
+		self.length_st_list = len(self.station_list)
+		self.robot_list = tuple(self.robot_list)
+		self.length_rb_list = len(self.robot_list)
+
 		# data_init
 		self.d = DATA()
 		self.parameter()
 
 		# init node and provide service
-		rospy.loginfo("current host list : "+str(self.host_list))
+		rospy.loginfo("CLIENT: current robot list : "+str(self.robot_list))
+		rospy.loginfo("CLIENT: current station list : "+str(self.station_list))
+
 		# server_addr = (host, port)
-		self.server_addr = list(self.host_list)
-		self.s_no = 0
+		self.server_addr = list(self.robot_list) + list(self.station_list)
+
 		# start to connect to multiple host
+		# self.s_no = 0
 		self.sel = selectors.DefaultSelector()
 		for i in range(len(self.server_addr)):
 			connid = i + 1
  			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			sock.setblocking(False)
-			sock.connect_ex(self.host_list[i]) # == 0 : # 0 for success
+			sock.connect_ex(self.server_addr[i]) # == 0 : # 0 for success
 			# self.s_no = self.s_no + 1 # not everytime will connect
 			events = selectors.EVENT_READ | selectors.EVENT_WRITE
-			data = (self.host_list[i])
+			data = (self.server_addr[i])
 			self.sel.register(sock, events, data=data)
 			# sock.connect_ex(self.host_list[i]) # == 0 : # 0 for success
 		#self.sending_no = s_no
-	        self.sending_no = len(self.host_list)
+	        self.sending_no = len(self.server_addr)
 		rospy.loginfo('we connec robot no : '+str(self.sending_no))
-		rospy.loginfo('we actual connec robot no : '+str(self.s_no))
+		# rospy.loginfo('we actual connec robot no : '+str(self.s_no))
 		rospy.loginfo('connection done wait for service call : ')
 		rospy.spin()
 
@@ -136,7 +158,7 @@ class Wifi():
 
 		if mask & selectors.EVENT_WRITE:
 			for i in self.d.signatures:
-				if data[0] == i[0]:
+				if data[0] == i[0] or data[0] == i: # ip i want to send == ip of my data
 					# could be improved by pruning of send signatures
 					rospy.loginfo('start sending wifi ')
 					# rospy.loginfo self.d
@@ -169,7 +191,7 @@ class Wifi():
 
 
 	def handle_wifi_send(self,req): # input of service is  header and wifiio output is error code and header
-		rospy.loginfo('start client')
+		rospy.loginfo('start client send to')
 		rospy.loginfo(str(req.info.signatures))
 		send_no = self.sending_no
 		# read input data
@@ -178,17 +200,23 @@ class Wifi():
 		self.d.sender = self.ID
 		# note that author decide by master only
 
+		if isinstance(self.d.signatures,str):
+			self.d.signatures =  eval(self.d.signatures)
+			rospy.loginfo(str(req.info.signatures))
+		else:
+			rospy.loginfo(str(req.info.signatures))
 		# for clearing string tuple problem
-		if self.d.signatures[0] != "ALL":
-			while not isinstance(self.d.signatures[0],tuple):
-				self.d.signatures = self.d.signatures[0]
-			for i in range(len(self.d.signatures)):
-        	                self.d.signatures[i] =  eval(self.d.signatures[i])
+		#if self.d.signatures[0] != "ALL":
+		#	while not isinstance(self.d.signatures[0],tuple):
+		#		self.d.signatures = self.d.signatures[0]
+		#	for i in range(len(self.d.signatures)):
+        	#                self.d.signatures[i] =  eval(self.d.signatures[i])
 
 		if req.info.purpose == self.NODE_REPLY: # routenode details is renewed in master node 
 			self.d.purpose = 'A'
 			send_no = 1
 			self.d.signatures = req.info.author # send back to author
+
 
 		elif req.info.purpose == self.COST:
 			send_no = 1
@@ -196,33 +224,46 @@ class Wifi():
 			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
 				self.d.signatures = []
 				# for i in range(len(self.host_list)):
-				for i in range(send_no):
-					self.d.signatures.append(self.host_list[i])
+				for i in range(self.length_rb_list):
+					self.d.signatures.append(self.robot_list[i])
 
-		elif req.info.purpose == self.NODE:
+		elif req.info.purpose == self.NODE: # ask A NODE
 			send_no = 1
-			pass
+			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
+				self.d.signatures = []
+				# for i in range(len(self.host_list)):
+				for i in range(self.length_rb_list):
+					self.d.signatures.append(self.robot_list[i])
 
 		elif req.info.purpose == self.JUST_TALK:
 			send_no = 1
 			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
 				self.d.signatures = []
 				# for i in range(len(self.host_list)):
-				for i in range(send_no):
-					self.d.signatures.append(self.host_list[i])
+				for i in range(self.length_rb_list):
+					self.d.signatures.append(self.robot_list[i])
 
 		elif req.info.purpose == self.OK:
 			send_no = 1
 			pass
 
-		elif req.info.purpose == self.TASK or  req.info.purpose == self.WEB :
+		elif req.info.purpose == self.TASK :
 			#send_no = len(self.host_list)
 			send_no = send_no
 			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
 				self.d.signatures = []
 				# for i in range(len(self.host_list)):
-				for i in range(send_no):
-					self.d.signatures.append(self.host_list[i])
+				for i in range(self.length_rb_list):
+					self.d.signatures.append(self.robot_list[i])
+
+		elif req.info.purpose == self.WEB :
+			#send_no = len(self.host_list)
+			send_no = send_no
+			if req.info.signatures[0] == "ALL": # all will send to every but else will send to original signatures ppl
+				self.d.signatures = []
+				# for i in range(len(self.host_list)):
+				for i in range(self.length_st_list):
+					self.d.signatures.append(self.station_list[i])
 
 		self.server_addr = list(self.d.signatures)
 		# currently msg sending is one to one only not one to many for every message, except for task 
