@@ -21,28 +21,29 @@ if rospy.has_param('Working_Station'):
 else:
 	WORKING_STATION = False
 
+#################################################################
+# WEB_DATA is a class for storing data from website for station #
+#################################################################
+
 class WEB_DATA():
 	def __init__(self):
-		#self.print_list = [] # data include name, status, node
-		self.counter = 0
+		self.counter = 0 # used to remind click how many times and used to send task ID
 		self.Robot_1 = ['Robot_1', 'IDLE', 'not started']
 		self.Robot_2 = ['Robot_2', 'IDLE', 'not started']
 		self.text = "STARTING"
-		self.route = 0
-		self.node = 0
-		#self.print_list.append(Robot_1)
-		#self.print_list.append(Robot_2)
+		self.route_node = [0,0,0,0] # from 0,0 to 0,0
+		self.reset_flag = 0
 
-	#def update_data(self,data):
-	#	self.counter = 0
-
-	#def update_robot(self,robot_list):
-	#	for i in range(len(robot_list)):
-	#		self.print_list.append([robot_list[i][0],"IDLE","0,0"])
 	def update_rn(self):
+		# read input from web as x,y,a,b => from x,y to a,b
 		no_ = self.text.split(',')
-		self.route = int(no_[0])
-		self.node = int(no_[1])
+		# reject if input length not equal 4
+		if len(no_) != 4:
+			rospy.loginfo("WEB_INPUT ERROR")
+			return 0
+		# save data
+		for i in range(4):
+			self.route_node[i] = int(no_[i])
 
 	def set_counter(self,counter = 0):
 		self.counter = counter
@@ -54,11 +55,17 @@ class WEB_DATA():
 		return self.counter
 
 # for share data of web app and code
+# initial web_data when code begin, like initial a database
 web_data = WEB_DATA()
 web_data.set_counter()
-reset_flag = 0
 
-def ros_node(nod):  # call for service # input is string
+
+###############################################
+# below is a series of service initialization #
+###############################################
+
+def ros_node(nod):  # call for service # for ask node ocp
+	# while loop pooling for keep asking node until central repeat
 	while(1):
 		try:
 			rospy.wait_for_service('robot_wifi_nodeocp_inner',timeout=5) # wait until service available # service name
@@ -68,18 +75,14 @@ def ros_node(nod):  # call for service # input is string
 			if self.shut == 1: # for closing this thread
 				break
 	try:
-		# rospy.loginfo('ask central for data')
 		ask_node = rospy.ServiceProxy('robot_wifi_nodeocp_inner', WifiNodeOcp) # handler; name, service name the --- one
-		#header = Header(stamp=rospy.Time.now(), frame_id='base')
-		# ask route node return  0 if no ocp
 		s = ask_node(nod)
-		# rospy.loginfo('ask central for data done')
 		return s.is_ocp # boolean is occupied
 	except rospy.ServiceException, e:
 		rospy.loginfo("Service call failed:")
 
 
-def ros_serv_(p):  # call for service # input is string
+def ros_serv_(p):  # call for service # for ask data(internal state)
 	while(1):
 		try:
 			rospy.wait_for_service('robot_wifi_askdata_inner',timeout=5) # wait until service available # service name
@@ -101,7 +104,7 @@ def ros_serv_(p):  # call for service # input is string
 		rospy.loginfo("Service call failed:")
 
 
-def ask_cost(rn):  # call for service # input is string
+def ask_cost(rn):  # call for service # for ask cost
 	while(1):
 		try:
 			rospy.wait_for_service('robot_wifi_nodecost_inner',timeout=5) # wait until service available # service name
@@ -120,7 +123,7 @@ def ask_cost(rn):  # call for service # input is string
 		rospy.loginfo("MASTER:Service call failed:")
 
 
-def Task_confirm(cs):  # call for service # input is cost
+def Task_confirm(cs,dest):  # call for service # for task confirmation
 	while(1):
 		try:
 			rospy.wait_for_service('robot_wifi_taskconfirm_inner',timeout=5) # wait until service available # service name
@@ -132,14 +135,14 @@ def Task_confirm(cs):  # call for service # input is cost
 	try:
 		rospy.loginfo('MASTER:ask central for wifi confirm')
 		task_c = rospy.ServiceProxy('robot_wifi_taskconfirm_inner', WifiTaskConfirm)
-		s = task_c(cs)
+		s = task_c(cs,dest)
 		rospy.loginfo('MASTER:ask central for wifi confirm done')
 		return s
 	except rospy.ServiceException, e:
 		rospy.loginfo("MASTER:Service call failed:")
 
 
-def send_wifi(data):
+def send_wifi(data): # ask client to send data through wifi
 	rospy.wait_for_service('send_task')
 	try:
 		rospy.loginfo('MASTER:tell wifi to send data')
@@ -154,29 +157,38 @@ def send_wifi(data):
 	except rospy.ServiceException, e:
 		rospy.loginfo("MASTER:Service call failed:")
 
+################################################################
+# WIFI_MASTER is the most important node                       #
+# => decide sending and reply what kind of message             #
+# => keep pooling internal state and website for update states #
+################################################################
+
 class WIFI_MASTER():
 	def __init__(self):
 
-		#create node and service for shengming use
+		# create node and service for shengming use
 		rospy.init_node('wifi_master', anonymous=True)
 
-		#setting up parameter
+		# setting up parameter
 		self.parameter_setup()
-
-		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service) # provide service
+		# setting up service and topic kind of thing
+		# provide service
+		s = rospy.Service('robot_wifi_nodeocp_outer', WifiNodeOcp, self.reply_service)
 		rospy.Subscriber('robot_wifi_io',WifiIO,self.subs)
-		rospy.loginfo("MASTER:working : "+str(WORKING_STATION))
+		rospy.loginfo("MASTER: is working station? : "+str(WORKING_STATION))
 		rospy.loginfo('MASTER:initialize wifi master service ')
 
+		# start thread to keep pooling internal states
 		add_thread = threading.Thread(target = self.update_job)
   	  	add_thread.start()
 
-		# for closing thread and node
 		rospy.spin()
+
+		# for closing thread and node
 		self.shut = 1
 
 	def parameter_setup(self):
-		# for shuttingdown node and thread
+		# for shutting down node and thread
 		self.shut = 0
 
 		# get IP add and port
@@ -193,21 +205,20 @@ class WIFI_MASTER():
 		# some parameter
 		self.COST = 'C'
 		self.TASK = 'W'
-		self.NODE = 'A'
+		self.NODE_REPLY = 'A'
 		self.NODE_ASK = 'N'
 		self.WEB  = 'B'
 		self.ERROR = 'O'
 
 		# self state
-		self.IDLE = "IDLE"
-		self.COSTING = "COST_ING"
+		self.IDLE     = "IDLE"
+		self.COSTING  = "COST_ING"
 		self.COSTDONE = "COST_DONE"
-		self.WORKING = "WORKING"
-		self.HOMING = "HOMING"
+		self.WORKING  = "WORKING"
+		self.HOMING   = "HOMING"
 		self.TEACHING = "TEACHING"
 
-		# locking for update job and subs
-		self.cc = 0
+		# locking for update job and states # if not lock will induce memory conflict problem
 		self.LOCK   = 1
 		self.UNLOCK = 0
 		self.lock_1 = self.LOCK
@@ -237,6 +248,7 @@ class WIFI_MASTER():
 			h_list = rospy.get_param('robot_list')
 			h_list = h_list.split(',')
 
+			# used to update web data # currently is static
 			try:
 				web_data.Robot_1[0] = h_list[0]
 				web_data.Robot_1[1] = 'starting'
@@ -269,7 +281,7 @@ class WIFI_MASTER():
 		self.robot_list = tuple(self.robot_list)
 		self.length_rb_list = len(self.robot_list)
 
-		# initial state of station
+		# initial node
 		if rospy.has_param('station_node'):
 			r_n = rospy.get_param('station_node')
 			r_n = r_n.split(',')
@@ -283,8 +295,8 @@ class WIFI_MASTER():
 		self.current_node = RouteNode()
 		self.current_node.route = route_
 		self.current_node.node = node_
-		self.node_flag = 0 # asking done
-		self.node_flag2 = 1 # asking done
+		self.node_flag = 0
+		self.node_flag2 = 1
 		self.target_node = RouteNode()
 		self.node_list = []
 		for i in range(self.length_rb_list):
@@ -312,35 +324,41 @@ class WIFI_MASTER():
 		# error code 0 for no error ; P for still processing
 		rospy.loginfo('want to go: '+str(req.q_rn.route)+'_'+str(req.q_rn.node))
 		rsp = WifiNodeOcpResponse()
-		self.node_flag = 1
+		self.node_flag = 1 # node_flag 1 for start asking node
+
+		# flag for checking
 		if self.node_flag2 == 0: # asking done
-			rsp.is_ocp = 0
-			rsp.error_code = 'O'
+			rsp.is_ocp = 1
+			rsp.error_code = '0'
 			for i in range(self.length_rb_list):
 				if self.node_list[i][1] == 1:
-					rsp.is_ocp = 1
-					rsp.error_code = 'O'
+					rsp.is_ocp = 0
+					rsp.error_code = '0'
 					self.node_flag = 0
 					break
 			self.node_flag = 0
+			self.node_flag2 = 1
 			self.node_count = 0
 			return rsp
 		else: #processing
 			self.node_flag2 = 1
-			self.node_flag = 0
 			self.target_node = req.q_rn
 			rsp.is_ocp = 0
 			rsp.error_code = 'P'
 			return rsp
 
+	##########################################################################
+	# this fucntion will reply according to different case, a bit messy here #
+	##########################################################################
+
 	def subs(self,data): # read data from wifi # data is WifiIO
+
 		# read new task
 		rospy.loginfo('MASTER: recv data in master')
-		while self.lock_once == self.LOCK: # must process each at once otherwise collision of data or mixing of data
+		# must wait process until free otherwise collision of data or mixing of data
+		while self.lock_once == self.LOCK:
 			pass
 		self.lock_once = self.LOCK
-
-		# rospy.loginfo(str(data))
 		rospy.loginfo('MASTER: recv data from wifi with purpose : '+str(data.purpose))
 
 		# recv data
@@ -390,8 +408,9 @@ class WIFI_MASTER():
 								if  data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
 								#if data.cost.cost_owner == self.ID and data.cost.cost >= self.current_task.self_cost  : # if it is me then i m the chosen one
 									rospy.loginfo('MASTER: IM GOING to do the job')
+									dest = data.node
 									# here do task confirmation
-									s = Task_confirm(data.cost)
+									s = Task_confirm(data.cost,dest)
 									self.current_state = self.COSTDONE
 									if s.is_taken: # check if want to take
 										self.current_state = self.WORKING
@@ -433,7 +452,7 @@ class WIFI_MASTER():
 					self.reply_normal(data)
 
 		# read node
-		elif data.purpose == self.NODE:
+		elif data.purpose == self.NODE_REPLY:
 			if not WORKING_STATION: # working station not need to recv and store TASK
 				rospy.loginfo('MASTER:Node recv and updating')
 				for i in range(len(self.database)): # check if this is old task # remove node task
@@ -460,21 +479,22 @@ class WIFI_MASTER():
 		else:
 			pass
 
-		#########################################################################################
 		# for working station used
 		if WORKING_STATION :
 			if data.purpose == self.WEB:
-			# check if data to working station recv
-			# 	do a function to adjust the thing
 				self.update_web(data)
-		##########################################################################################
 
+		# for locking problem again
 		if self.lock_1 == self.LOCK:
 			while(1):
 				if self.lock_1 == self.UNLOCK:
 					break
 		self.lock_1 = self.LOCK
 		self.lock_once = self.UNLOCK
+
+	#########################################
+	# this fucntion will keep updating data #
+	#########################################
 
 	def update_job(self):
 		rospy.loginfo('MASTER:start background process data')
@@ -490,20 +510,17 @@ class WIFI_MASTER():
 				current = time.time()
 				if current - last > 1 : # in sec
 					last = current
-
-					# get car data
 					try:
-
-						if self.node_flag == 1: # asking start
-							# here start to keep asking node !!!
-							#current_node = time.time()
-							#if current_node - last_node > 2 : # in sec ask node
-							#	last_node = current_node
+						# start asking node if asked by central
+						if self.node_flag == 1:
+							self.node_flag = 0 # ask once is enough "maybe"
 							rospy.loginfo("MASTER: start ask node")
 							self.send_all_node(self.target_node)
 							rospy.loginfo("MASTER: start ask node done")
 						else:
 							rospy.loginfo("MASTER: not start @@ ask node")
+
+						# ask for current state
 						car = ros_serv_("N")
 						self.current_node = RouteNode()
 						if car.mode & 1 :
@@ -542,8 +559,11 @@ class WIFI_MASTER():
 									c.cost 	     = ret.cost
 									c.target     = self.current_task.task_node
 									rospy.loginfo("MASTER: start task confirm")
+
+									dest = self.current_task.final_node
+
 									# send task confirm
-									s = Task_confirm(c) # input : cost msg
+									s = Task_confirm(c,dest) # input : cost msg
 									self.current_state = self.COSTDONE
 									if s.is_taken: # check if want to take
 										self.current_state = self.WORKING
@@ -567,54 +587,49 @@ class WIFI_MASTER():
 							self.car_state = self.WORKING
 							rospy.loginfo("MASTER: center is working")
 							self.task_tag = 1
+
 						# update website
 						current_node = time.time()
 						if current - last2 > 10:
 							last2 = current
 							self.send_update_web(car)
-
 					except:
 						rospy.loginfo('MASTER: not connected ros_serv or error')
-
 			else:
-			#########################################################################################
 			# for working station used
 				if self.button_pressed():
 					rospy.loginfo('MASTER:UI button pressed announce data')
 					self.announce_new_task()
-			########################################################################################
 
 			if self.shut == 1: # for closing this thread
 				break
 
 		rospy.loginfo('MASTER:all done')
 
-	##############################################################################
+	##################################
+	# some function concern with web #
+	##################################
+
 	def button_pressed(self):
 		global web_data
-		global reset_flag
-
-		if web_data.get_c() == 0 :
+		# check for button press
+		if web_data.get_c() == 0: # initial counter is 0
 			return False
 		else:
-			self.cc = web_data.get_c()
+			temp = web_data.get_c() # sometimes counter will keep jump to 0 and counter
 
-		if reset_flag == 1:
-			reset_flag = 0
-			self.current_node.route = 0
-			self.current_node.node = 0
+		# if reset is pressed then reset button press
+		if web_data.reset_flag == 1:
+			web_data.reset_flag = 0
 			self.button_press = 0
 			return False
 
-		if self.button_press == self.cc:
+		if self.button_press == temp: # only true when renewed
 			return False
 		else:
-
-			#self.current_node.route = self.cc - 1
-			#self.current_node.node = self.cc - 1
-			self.current_node.route = web_data.route
-			self.current_node.node = web_data.node
-			self.button_press = self.cc
+			self.current_node.route = web_data.route_node[0]
+			self.current_node.node = web_data.route_node[1]
+			self.button_press = temp
 			return True
 
 	def announce_new_task(self):# sending task , task node , author
@@ -622,7 +637,8 @@ class WIFI_MASTER():
 		w.purpose=self.TASK
 		w.signatures = ["ALL"]
 		w.TASK_ID = str(self.ID)+"-"+str(self.cc)
-		w.node = self.current_node
+		w.node.route = web_data.route_node[2]
+		w.node.node  = web_data.route_node[3]
 		w.cost.target = self.current_node
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
@@ -646,9 +662,7 @@ class WIFI_MASTER():
 		w.ctrldata = ctrldata
 		s = send_wifi(w) # ask other cost
 
-	##############################################################################
-
-	def send_all_node(self,node): #input is target node
+	def send_all_node(self,node): #input is target node # ask node
 		rospy.loginfo('MASTER: ask node_ing')
 		w = WifiIO()
 		w.signatures = ["ALL"]
@@ -657,12 +671,10 @@ class WIFI_MASTER():
 		else:
 			w.TASK_ID = self.current_task
 		w.node = node
-		#header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w.purpose = self.NODE_ASK
 		w.sender_state = self.IDLE
 		w.author = self.ID
 		s = send_wifi(w) # ask other cost
-
 
 	def reply_normal(self,data,state="IDLE"): # input is wifiIO
 		rospy.loginfo('MASTER:reply normal')
@@ -670,8 +682,8 @@ class WIFI_MASTER():
 		w.signatures = data.signatures
 		w.cost  = data.cost
 		w.sender_state = state
-		# header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w.purpose = self.COST
+		w.node = data.node
 		# w.sender_state = self.current_state
 		s = send_wifi(w) # ask other cost
 
@@ -686,7 +698,7 @@ class WIFI_MASTER():
 			w.cost.cost_owner = self.ID
 		w.purpose = self.COST
 		w.sender_state = self.IDLE
-		#header = Header(stamp=rospy.Time.now(), frame_id='base')
+		w.node = data.node
 		s = send_wifi(w) # ask other cost
 
 	def start_ask_cost(self):
@@ -698,7 +710,6 @@ class WIFI_MASTER():
 		self.current_task.self_cost = ret.cost
 		# NOW ask others their cost
 		# need to send task need to use WIFI IO now
-		#header = Header(stamp=rospy.Time.now(), frame_id='base')
 		w = self.wifiio_cost_update(self.current_task)
 		w.sender_state = self.current_state
 		w.purpose = self.COST
@@ -716,6 +727,7 @@ class WIFI_MASTER():
 		w.cost.cost    = data.self_cost
 		w.cost.cost_owner = self.ID
 		w.cost.target  = data.task_node
+		w.node = data.final_node
 		return w
 
 class TASK_DATA():
@@ -725,26 +737,28 @@ class TASK_DATA():
 		self.task_sender = data.author
 		self.self_cost = -1
 		self.lowest_cost = -1
+		self.final_node = data.node
 
-
-class NODE_DATA():
-	def __init__(self,data_): # input data should be host list
-		self.data = []
-		self.length = len(data_)
-		for i in range(self.length):
-			self.data.append((data_[i][0],RouteNode())) # host ID , routenode
-
-	def check_hit(self,my_node): # will return will hit or not # check for next node
-		for i in range(self.length):
-			if my_node.route == self.data[i][1].route and my_node.node == self.data[i][1].node:
-				return True # will hit
-		return False # will not hit
-
-	def update_data(self,data_): # input is wifiio
-		for i in range(self.length):
-			if self.data[i][0] == data_.author:
-				self.data[i][1] = data_.node
-				break
+# --------------------------------------------------------
+#class NODE_DATA():
+#	def __init__(self,data_): # input data should be host list
+#		self.data = []
+#		self.length = len(data_)
+#		for i in range(self.length):
+#			self.data.append((data_[i][0],RouteNode())) # host ID , routenode
+#
+#	def check_hit(self,my_node): # will return will hit or not # check for next node
+#		for i in range(self.length):
+#			if my_node.route == self.data[i][1].route and my_node.node == self.data[i][1].node:
+#				return True # will hit
+#		return False # will not hit
+#
+#	def update_data(self,data_): # input is wifiio
+#		for i in range(self.length):
+#			if self.data[i][0] == data_.author:
+#				self.data[i][1] = data_.node
+#				break
+# -------------------------------------------------------
 
 def apprun():
 	app=Flask(__name__)
@@ -776,6 +790,7 @@ def apprun():
 
 	@app.route('/reset', methods=['POST'])
 	def reset():
+		web_data.reset_flag = 1
 		web_data.set_counter()
 	        print "counter = : ",web_data.get_c()
 	        return render_template('index.html',call=web_data.get_c(),
@@ -790,9 +805,5 @@ if __name__ == '__main__':
 	if WORKING_STATION:
 		add_thread = threading.Thread(target = apprun)
   		add_thread.start()
-    #try:
     	w = WIFI_MASTER()
 	#  w.talker()
-    #except rospy.ROSInterruptException:
-    #    rospy.loginfo('error')
-    #    pass

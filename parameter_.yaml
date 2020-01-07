@@ -1,7 +1,7 @@
 # setting all parameter here
 
-Working_Station: 0
-IP_address: "192.168.1.102"
+Working_Station: 0 # 1 for working station; 0 for robot
+IP_address: "192.168.1.102" # self ip address
 port: 12345
 station_list: "192.168.1.104,12345"
 robot_list: "192.168.1.102,12345,192.168.1.101,12345"
