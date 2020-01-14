@@ -196,7 +196,7 @@ class Wifi():
 		try:
 			self.d = json_message_converter.convert_json_to_ros_message('tircgo_msgs/WifiIO', data_rc.decode('utf-8'))
 		except:
-			rospy.loginfo('SERVER: recv error !!!!!!!!!!')
+			rospy.loginfo('SERVER: recv too big or convert error')
 			return 0, WifiIO()
 		##################################################################
 

@@ -38,12 +38,26 @@ class WEB_DATA():
 		# read input from web as x,y,a,b => from x,y to a,b
 		no_ = self.text.split(',')
 		# reject if input length not equal 4
-		if len(no_) != 4:
-			rospy.loginfo("WEB_INPUT ERROR")
+		if len(no_) != 4 or len(no_)!=2:
+			rospy.loginfo("WEB_INPUT ERROR 1")
 			return 0
 		# save data
-		for i in range(4):
-			self.route_node[i] = int(no_[i])
+		if len(no_)==2: # only given call station need to at least move back a bit
+			try:
+				self.route_node[0]=int(no_[0])
+				self.route_node[1]=int(no_[1])
+				self.route_node[2]=int(no_[0])
+				self.route_node[3]=int(no_[1])
+			except:
+				rospy.loginfo("WEB_INPUT ERROR 2")
+				return 0
+		else:
+			for i in range(4):
+				try:
+					self.route_node[i] = int(no_[i])
+				except:
+					rospy.loginfo("WEB_INPUT ERROR 3")
+					return 0
 
 	def set_counter(self,counter = 0):
 		self.counter = counter
@@ -254,17 +268,17 @@ class WIFI_MASTER():
 				web_data.Robot_1[1] = 'starting'
 				web_data.Robot_1[2] = 0
 			except:
-				web_data.Robot_1[0] = 'error'
-				web_data.Robot_1[1] = 'error'
-				web_data.Robot_1[2] = 'error'
+				web_data.Robot_1[0] = 'starting'
+				web_data.Robot_1[1] = 'starting'
+				web_data.Robot_1[2] = 'starting'
 			try:
 				web_data.Robot_2[0] = h_list[2]
 				web_data.Robot_2[1] = 'starting'
 				web_data.Robot_2[2] = 0
 			except:
-				web_data.Robot_2[0] = 'error'
-				web_data.Robot_2[1] = 'error'
-				web_data.Robot_2[2] = 'error'
+				web_data.Robot_2[0] = 'starting'
+				web_data.Robot_2[1] = 'starting'
+				web_data.Robot_2[2] = 'starting'
 
 			for i in range(len(h_list)/2):
 				# remove self from list
@@ -324,6 +338,12 @@ class WIFI_MASTER():
 		# error code 0 for no error ; P for still processing
 		rospy.loginfo('want to go: '+str(req.q_rn.route)+'_'+str(req.q_rn.node))
 		rsp = WifiNodeOcpResponse()
+
+		# skip asking process direct return no car
+		rsp.is_ocp = 0
+		rsp.error_code = '0'
+		return rsp
+
 		self.node_flag = 1 # node_flag 1 for start asking node
 
 		# flag for checking
@@ -344,7 +364,7 @@ class WIFI_MASTER():
 			self.node_flag2 = 1
 			self.target_node = req.q_rn
 			rsp.is_ocp = 0
-			rsp.error_code = 'P'
+			rsp.error_code = '0'
 			return rsp
 
 	##########################################################################
@@ -606,9 +626,9 @@ class WIFI_MASTER():
 
 		rospy.loginfo('MASTER:all done')
 
-	##################################
-	# some function concern with web #
-	##################################
+	#################################
+	# some functions related to web #
+	#################################
 
 	def button_pressed(self):
 		global web_data
@@ -775,7 +795,7 @@ def apprun():
 		web_data.text = request.form['text']
 		web_data.update_rn()
 		#processed_text = text
-		print(processed_text)
+		print web_data.text
 		return render_template('index.html',call=web_data.get_c(),
 	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
 	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])
