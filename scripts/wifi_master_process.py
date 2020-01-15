@@ -38,9 +38,9 @@ class WEB_DATA():
 		# read input from web as x,y,a,b => from x,y to a,b
 		no_ = self.text.split(',')
 		# reject if input length not equal 4
-		if len(no_) != 4 or len(no_)!=2:
+		if len(no_) != 4  : #or len(no_)!=2:
 			rospy.loginfo("WEB_INPUT ERROR 1")
-			return 0
+			#return 0
 		# save data
 		if len(no_)==2: # only given call station need to at least move back a bit
 			try:
@@ -430,6 +430,7 @@ class WIFI_MASTER():
 									rospy.loginfo('MASTER: IM GOING to do the job')
 									dest = data.node
 									# here do task confirmation
+									rospy.loginfo('MASTER: pt'+str(dest))
 									s = Task_confirm(data.cost,dest)
 									self.current_state = self.COSTDONE
 									if s.is_taken: # check if want to take
@@ -581,6 +582,9 @@ class WIFI_MASTER():
 									rospy.loginfo("MASTER: start task confirm")
 
 									dest = self.current_task.final_node
+
+									# here do task confirmation
+									rospy.loginfo('MASTER: pt'+str(dest)+"---"+str(c))
 
 									# send task confirm
 									s = Task_confirm(c,dest) # input : cost msg
