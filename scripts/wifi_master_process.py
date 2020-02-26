@@ -37,9 +37,19 @@ class WEB_DATA():
 	def update_rn(self):
 		# read input from web as x,y,a,b => from x,y to a,b
 		no_ = self.text.split(',')
+		rospy.loginfo("input is :"+str(no_))
+
 		# reject if input length not equal 4
+<<<<<<< Updated upstream
 		if len(no_) != 4  : #or len(no_)!=2:
 			rospy.loginfo("WEB_INPUT ERROR 1")
+=======
+		if len(no_) != 4 :
+			rospy.loginfo("WEB_INPUT ERROR 1.1")
+			#return 0
+		if len(no_) != 2 :
+			rospy.loginfo("WEB_INPUT ERROR 1.2")
+>>>>>>> Stashed changes
 			#return 0
 		# save data
 		if len(no_)==2: # only given call station need to at least move back a bit
@@ -48,16 +58,28 @@ class WEB_DATA():
 				self.route_node[1]=int(no_[1])
 				self.route_node[2]=int(no_[0])
 				self.route_node[3]=int(no_[1])
+				rospy.loginfo("WEB_INPUT"+self.route_node[0]+" "+self.route_node[1])
 			except:
 				rospy.loginfo("WEB_INPUT ERROR 2")
-				return 0
+				return 1
 		else:
-			for i in range(4):
-				try:
-					self.route_node[i] = int(no_[i])
-				except:
-					rospy.loginfo("WEB_INPUT ERROR 3")
-					return 0
+			try:
+				self.route_node[0]=int(no_[0])
+				self.route_node[1]=int(no_[1])
+				self.route_node[2]=int(no_[2])
+				self.route_node[3]=int(no_[3])
+				rospy.loginfo("WEB_INPUT"+self.route_node[0]+" "+self.route_node[1])
+			except:
+				rospy.loginfo("WEB_INPUT ERROR 3")
+				return 1
+
+			#for i in range(4):
+			#	try:
+			#		self.route_node[i] = int(no_[i])
+			#	except:
+			#		rospy.loginfo("WEB_INPUT ERROR 3")
+			#		return 0
+		rospy.loginfo("WEB_INPUT"+self.route_node[0]+" "+self.route_node[1]+" "+self.route_node[2]+" "+self.route_node[3])
 
 	def set_counter(self,counter = 0):
 		self.counter = counter
@@ -657,10 +679,11 @@ class WIFI_MASTER():
 			return True
 
 	def announce_new_task(self):# sending task , task node , author
+		global web_data
 		w = WifiIO()
 		w.purpose=self.TASK
 		w.signatures = ["ALL"]
-		w.TASK_ID = str(self.ID)+"-"+str(self.cc)
+		w.TASK_ID = str(self.ID)+"-"+str(web_data.get_c())
 		w.node.route = web_data.route_node[2]
 		w.node.node  = web_data.route_node[3]
 		w.cost.target = self.current_node
@@ -807,7 +830,7 @@ def apprun():
 	@app.route('/submit', methods=['POST'])
 	def submit():
 		web_data.update_counter()
-	        print "counter = : ",web_data.get_c()
+	        print "counter sub= : "+str(web_data.get_c())
 	        return render_template('index.html',call=web_data.get_c(),
 	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
 	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])
@@ -816,7 +839,7 @@ def apprun():
 	def reset():
 		web_data.reset_flag = 1
 		web_data.set_counter()
-	        print "counter = : ",web_data.get_c()
+	        print "counter res= : "+str(web_data.get_c())
 	        return render_template('index.html',call=web_data.get_c(),
 	                                        Robot_1_Name=web_data.Robot_1[0],Robot_1_Status=web_data.Robot_1[1],Robot_1_Node=web_data.Robot_1[2],
 	                                        Robot_2_Name=web_data.Robot_2[0],Robot_2_Status=web_data.Robot_2[1],Robot_2_Node=web_data.Robot_2[2])

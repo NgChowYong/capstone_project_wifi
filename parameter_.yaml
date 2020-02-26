@@ -1,10 +1,18 @@
 # setting all parameter here
 
+<<<<<<< Updated upstream
 Working_Station: 0 # 1 for working station; 0 for robot
 IP_address: "192.168.1.101" # self ip address
 port: 12345
 station_list: "192.168.1.104,12345"
 robot_list: "192.168.1.101,12345"
+=======
+Working_Station: 1 # 1 for working station; 0 for robot
+IP_address: "192.168.1.104" # self ip address
+port: 12345
+station_list: "192.168.1.104,12345"
+robot_list: "192.168.1.101,12345" #,192.168.1.102,12345"
+>>>>>>> Stashed changes
 #host_list: "192.168.1.102,12345,192.168.1.101,12345"
 #host_list: "192.168.1.102,12345,192.168.1.101,12345,192.168.1.101,12346"
 station_node: "0,0"
