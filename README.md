@@ -1,7 +1,7 @@
-# ros_wifi
+# Ros_Wifi
 
-Final Year project - PYbot
+Capstone project "PYbot" for NTHU-PME in year 2020.
 
-ROS - based mobile robot that able to decentralized vehicle dispatching system.
+PYbot is a ROS-based mobile robot that is able to perform decentralized vehicle dispatching system. The code is same for different robots, thus it is able to collaborate each robots in decentralized means.
 
-The code is same for different robots, and a website is used for display the results.
+A website is used for display the results for the dispatching system.
